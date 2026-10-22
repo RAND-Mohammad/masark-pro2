@@ -162,9 +162,9 @@ export default function UploadCvScreen() {
           <Text style={styles.backText}>العودة</Text><Text style={styles.backArrow}>←</Text>
         </Pressable>
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>ملفك المهني · مراجعة قبل الاعتماد</Text>
-          <Text style={styles.title}>سيرتك الذاتية، كما كتبتها أنت</Text>
-          <Text style={styles.intro}>راجع كل معلومة ودليلها، وصحّح القسم قبل أن تختار مسارك المهني.</Text>
+          <Text style={styles.eyebrow}>ملفك المهني</Text>
+          <Text style={styles.title}>تحليل السيرة الذاتية</Text>
+          <Text style={styles.intro}>ارفع سيرتك، راجع النتيجة، ثم اعتمدها.</Text>
         </View>
 
         {oldDraft || oldApproved ? <View style={styles.warning} accessibilityRole="alert">
@@ -183,19 +183,20 @@ export default function UploadCvScreen() {
               <Text style={styles.note}>PDF فقط · حتى 10 ميجابايت</Text>
             </View>
           </View>
-          <Text style={styles.text}>يجب أن يحتوي الملف نصًا قابلًا للقراءة. الصور وملفات Word وملفات PDF الممسوحة ضوئيًا دون نص غير مدعومة.</Text>
+          <Text style={styles.text}>PDF نصي باللغة الإنجليزية فقط · حتى 10 ميجابايت</Text>
           <Pressable style={[styles.button, busy && styles.disabled]} accessibilityRole="button" disabled={busy || !ready} onPress={() => void pickCv()}>
             <Text style={styles.buttonText}>{file ? 'اختيار ملف آخر' : 'اختيار السيرة من الملفات'}</Text>
           </Pressable>
           {file ? <>
             <View style={styles.fileMeta}><Text style={styles.fileName}>{file.name}</Text><Text style={styles.fileSize}>{formatCvSize(file.size)}</Text></View>
-            {selection('أوافق على إرسال ملف PDF ونص السيرة إلى Google Gemini لتحليله، ثم مراجعة النتائج قبل اعتمادها.', consent, () => setConsent(!consent))}
             <View style={styles.notice}>
-              <Text style={styles.noticeTitle}>حدود الاستخراج</Text>
-              <Text style={styles.note}>PDF نصي باللغة الإنجليزية فقط. يُرسل الملف ونصه إلى Google Gemini لفهم التخطيط، وتُفحص الأدلة مقابل النص المقروء آليًا. لا ندعم الصور الممسوحة أو OCR. راجع النتائج؛ الحقول غير المؤكدة تبقى فارغة، وعند تعذر الخدمة يظهر خطأ دون بديل محلي. لن يبدأ الإرسال قبل موافقتك.</Text>
+              <Text style={styles.noticeTitle}>قبل التحليل</Text>
+              <Text style={styles.note}>يُرسل الملف إلى Gemini بعد موافقتك. ملفات الصور وOCR غير مدعومة.</Text>
+              <Text style={styles.note}>للاختبار، استخدم سيرة تجريبية؛ قد تستخدم Google بيانات الخطة المجانية لتحسين خدماتها.</Text>
             </View>
-            <Pressable disabled={busy} onPress={() => void Linking.openURL('https://ai.google.dev/gemini-api/terms').catch(() => setError('تعذر فتح صفحة سياسة البيانات.'))}>
-              <Text style={styles.link}>سياسة بيانات Google Gemini</Text>
+            {selection('أوافق على إرسال السيرة إلى Google Gemini.', consent, () => setConsent(!consent))}
+            <Pressable disabled={busy} onPress={() => void Linking.openURL('https://ai.google.dev/gemini-api/docs/pricing').catch(() => setError('تعذر فتح تفاصيل خطة Google.'))}>
+              <Text style={styles.link}>تفاصيل استخدام البيانات</Text>
             </Pressable>
             <Pressable style={[styles.button, styles.secondaryButton, (!consent || busy) && styles.disabled]} accessibilityRole="button" disabled={!consent || busy} onPress={() => {
               if (review || savedCv) setConfirmReanalysis(true);
@@ -209,7 +210,7 @@ export default function UploadCvScreen() {
               <Pressable accessibilityRole="button" disabled={busy || !consent} onPress={() => void runAnalysis()}><Text style={styles.link}>إعادة التحليل مع الحفاظ على تعديلاتي</Text></Pressable>
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => setConfirmReanalysis(false)}><Text style={styles.link}>إلغاء إعادة التحليل</Text></Pressable>
             </View> : null}
-            <Text style={styles.note}>السيرة ونتيجة التحليل محفوظتان على هذا الجهاز حتى تحذفهما. حفظ المتصفح منفصل عن حفظ الآيفون، وقد يُحذف عند مسح بيانات التطبيق أو المتصفح.</Text>
+            <Text style={styles.note}>راجع النتيجة قبل اعتمادها. تُحفظ السيرة على هذا الجهاز حتى حذفها.</Text>
             <Pressable accessibilityRole="button" disabled={busy} onPress={() => setConfirmDelete(true)} style={styles.deleteAction}><Text style={styles.deleteText}>حذف السيرة المحفوظة</Text></Pressable>
             {confirmDelete ? <View style={styles.confirmBox}>
               <Text style={styles.text}>هل تريد حذف ملف السيرة والمعلومات والمهارات المستخرجة منه؟ تبقى المعلومات المضافة يدويًا بشكل مستقل والمهارات اليدوية وخطة التعلم.</Text>

@@ -1,17 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { recoverListedSkills } from './skill-list-recovery.mjs';
-import { analyzeText } from './analysis.mjs';
+import { analyzeText, extractText } from './analysis.mjs';
 import { providerResult } from './fixtures/provider-result.mjs';
+import { syntheticPdf } from './fixtures/synthetic-pdf.mjs';
 
 test('recovers Python and C++ when the model returns only Java from their shared list', async () => {
-  const source = '[P1L1 y=100] (x=40) Programming Languages: Java, Python, C++';
-  const initial = { skills: [{ name: 'Java', mapped_skill_id: null, evidence: 'Programming Languages: Java, Python, C++' }], certificates: [], education: [], experiences: [], activities: [], projects: [] };
+  const line = 'Programming Languages: Java, Python, C++';
+  const pdf = syntheticPdf([line]);
+  const source = await extractText({ buffer: pdf, originalname: 'synthetic-skills.pdf', mimetype: 'application/pdf' });
+  const initial = providerResult({ skills: [{ name: 'Java', mapped_skill_id: null, evidence: line }] });
+  initial.skills[0].field_sources = [{ field: 'name', quote: 'Java', page: 1 }];
   let calls = 0;
-  const result = await analyzeText(source, { key: 'test-only', fetchImpl: async () => {
+  const result = await analyzeText(source, { key: 'test-only', pdf, client: { models: { generateContent: async () => {
     calls++;
-    return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(providerResult(initial)) } }] }));
-  } });
+    return { text: JSON.stringify(initial), candidates: [{ finishReason: 'STOP' }] };
+  } } } });
   assert.deepEqual(result.skills.map(skill => skill.name), ['Java', 'Python', 'C++']);
   assert.ok(result.skills.every(skill => skill.mapped_skill_id === 'T0644'));
   assert.equal(calls, 1);

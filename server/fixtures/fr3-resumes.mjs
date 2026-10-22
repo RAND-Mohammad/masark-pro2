@@ -92,10 +92,17 @@ function visualArabic(line) {
 }
 
 // Uses an already installed system font, no package, download or generated asset
-// is committed. A missing font fails the test explicitly instead of skipping it.
+// is committed. Prefer the Linux test font, then common Windows fonts that cover
+// Arabic and Latin so the PDF fixtures run on developer machines too.
 export function resumePdf(language, suppliedLines = resumeLines[language]) {
-  const path = ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/TTF/DejaVuSans.ttf'].find(existsSync);
-  if (!path) throw new Error('FR3 PDF tests require the existing DejaVuSans system font.');
+  const path = [
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    '/usr/share/fonts/TTF/DejaVuSans.ttf',
+    'C:/Windows/Fonts/arial.ttf',
+    'C:/Windows/Fonts/tahoma.ttf',
+    'C:/Windows/Fonts/segoeui.ttf',
+  ].find(existsSync);
+  if (!path) throw new Error('FR3 PDF tests require an installed system font with Arabic and Latin glyphs.');
   const font = readFileSync(path);
   const glyphs = new Map();
   const encoded = suppliedLines.map(visualArabic).map(line => [...line].map(character => {

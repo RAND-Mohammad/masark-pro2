@@ -47,8 +47,9 @@ test('active PDF analyzer uses Gemini model/schema and sends original PDF via of
   let calls = 0;
   const result = await analyzeText(text, { key: 'synthetic-only', pdf, client: client(payload(), request => {
     calls++;
-    assert.equal(request.model, 'gemini-4-argon');
+    assert.equal(request.model, 'gemini-3.8-flash');
     assert.equal(request.model, GEMINI_CV_MODEL);
+    assert.deepEqual(request.config.thinkingConfig, { thinkingLevel: 'medium' });
     assert.equal(request.config.responseMimeType, 'application/json');
     assert.equal(request.config.responseJsonSchema.additionalProperties, false);
     assert.ok(request.config.responseJsonSchema.required.includes('education'));

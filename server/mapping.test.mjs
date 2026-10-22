@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createSkillMatcher } from '../src/utils/skill-matching.mjs';
-import { analyzeText, validateAnalysis } from './analysis.mjs';
+import { analyzeText, extractText, validateAnalysis } from './analysis.mjs';
 import { providerResult } from './fixtures/provider-result.mjs';
+import { syntheticPdf } from './fixtures/synthetic-pdf.mjs';
 const data = JSON.parse(readFileSync(new URL('../src/masarak_dataset.json', import.meta.url)));
 const match = createSkillMatcher(data);
 const empty = { skills: [], certificates: [], education: [], experiences: [], activities: [], projects: [] };
@@ -29,8 +30,18 @@ test('an ambiguous alias is never silently assigned', () => {
   assert.equal(createSkillMatcher(small)('tool'), null);
 });
 test('analysis repairs missing and contradictory literal mappings but retains separate CV entries', async () => {
-  const source = 'Programming Languages: Java, Python, C++\nTools: Linux OS, Command line';
-  const result = await analyzeText(source, { key: 'test-only', fetchImpl: async () => new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(providerResult({ ...empty, skills: [{ name: 'Java', evidence: 'Programming Languages: Java, Python, C++', mapped_skill_id: null }, { name: 'Linux OS', evidence: 'Tools: Linux OS, Command line', mapped_skill_id: 'T0543' }] })) } }] })) });
+  const lines = ['Programming Languages: Java, Python, C++', 'Tools: Linux OS, Command line'];
+  const pdf = syntheticPdf(lines);
+  const source = await extractText({ buffer: pdf, originalname: 'synthetic-mappings.pdf', mimetype: 'application/pdf' });
+  const provider = providerResult({ ...empty, skills: [
+    { name: 'Java', evidence: lines[0], mapped_skill_id: null },
+    { name: 'Linux OS', evidence: lines[1], mapped_skill_id: 'T0543' },
+  ] });
+  provider.skills[0].field_sources = [{ field: 'name', quote: 'Java', page: 1 }];
+  provider.skills[1].field_sources = [{ field: 'name', quote: 'Linux OS', page: 1 }];
+  const result = await analyzeText(source, { key: 'test-only', pdf, client: { models: { generateContent: async () => ({
+    text: JSON.stringify(provider), candidates: [{ finishReason: 'STOP' }],
+  }) } } });
   assert.equal(result.skills.length, 5);
   assert.equal(result.skills.find(skill => skill.name === 'Linux OS').mapped_skill_id, 'T0153');
   assert.equal(result.skills.find(skill => skill.name === 'Python').mapped_skill_id, 'T0644');
