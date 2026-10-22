@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "UjKZLKrwCfMBdnP_neT_g"
+uri = "file://reports/masarak-project-status.pdf"
+type = "pdf"
+title = "تقرير حالة مشروع مسارك — PDF"
+description = "نسخة PDF عربية من التقرير: مقارنة المنجز والمتبقي، وحالة التخزين والخدمات، وأولويات حماية البيانات. خمس صفحات بحجم A4."
+logical_id = "a5f187f8-7dc9-4f68-900b-6efa9da49ce3"
+content_hash = "sha256:ef93f4a01e7fcdebb1647e02d3f1fde63e3ad1965d42cc40c2c11d66d66fd46c"
+size = 290384
+mtime_ms = 1791995032953
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:7026c07b-53e3-497d-affa-b6aac928fb2c/a5f187f8-7dc9-4f68-900b-6efa9da49ce3/87a10a5b-7e7c-44f5-958b-76a7ec165f5b"
+storage_version_token = "1791995060008004"
+content_type = "application/pdf"
+
+[[outputs]]
+id = "cMxjBgXFxzYNek-Rg4DvK"
+uri = "file://generated-artifacts/masarak-icons-preview.png"
+type = "image"
+title = "معاينة أيقونة مسارك من الشعار الأصلي"
+description = "مقارنة المصدر الأصلي بالأيقونة وقناع Android الدائري، مع معاينات فعلية بمقاسات 32 و48 و64 بكسل. دون إعادة رسم أو توليد صور."
+logical_id = "32b7e42e-83a7-43b8-b604-fd313d92299f"
+content_hash = "sha256:2a63a98e9dda27a3982ec1e28dbf872422d1f93dce06345fcdd8ea68fc2e1046"
+size = 229936
+mtime_ms = 1792027834425
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:7026c07b-53e3-497d-affa-b6aac928fb2c/32b7e42e-83a7-43b8-b604-fd313d92299f/a4d4015c-fb24-4c90-9148-d4055e9b4898"
+storage_version_token = "1792027946779642"
+content_type = "image/png"

@@ -1,0 +1,187 @@
+export type LearningResource = {
+  id: string;
+  title: string;
+  provider: string;
+  url: string;
+  skillIds: string[];
+  level: string;
+  duration: string;
+  access: string;
+  language: string;
+};
+
+// Curated from the providers' official pages. Prices and availability may change,
+// so the UI describes access conservatively instead of promising a free certificate.
+export const learningResources: LearningResource[] = [
+  {
+    id: 'coursera-ibm-intro-software-engineering',
+    title: 'Introduction to Software Engineering',
+    provider: 'IBM على Coursera',
+    url: 'https://www.coursera.org/learn/introduction-to-software-engineering',
+    skillIds: ['T0644', 'T0759', 'T0765', 'T0758'],
+    level: 'مبتدئ',
+    duration: 'نحو أسبوعين',
+    access: 'قد يتطلب اشتراكًا للشهادة؛ تحقّق من خيار التدقيق أو المساعدة المالية',
+    language: 'الإنجليزية مع ترجمات بحسب توفر المنصة',
+  },
+  {
+    id: 'coursera-minnesota-software-testing',
+    title: 'Introduction to Software Testing',
+    provider: 'University of Minnesota على Coursera',
+    url: 'https://www.coursera.org/learn/introduction-software-testing',
+    skillIds: ['T0767'],
+    level: 'متوسط',
+    duration: 'نحو 3 أسابيع',
+    access: 'قد يتطلب اشتراكًا للشهادة؛ تحقّق من خيار التدقيق أو المساعدة المالية',
+    language: 'الإنجليزية',
+  },
+  {
+    id: 'coursera-software-design-architecture',
+    title: 'Software Design and Architecture',
+    provider: 'University of Alberta على Coursera',
+    url: 'https://www.coursera.org/specializations/software-design-architecture',
+    skillIds: ['T0758', 'T0765'],
+    level: 'مبتدئ إلى متوسط',
+    duration: 'سلسلة من 4 دورات',
+    access: 'قد يتطلب اشتراكًا؛ تحقّق من خيارات المنصة الحالية',
+    language: 'الإنجليزية',
+  },
+  {
+    id: 'github-skills-introduction',
+    title: 'Introduction to GitHub',
+    provider: 'GitHub Skills',
+    url: 'https://github.com/skills/introduction-to-github',
+    skillIds: ['T0879'],
+    level: 'مبتدئ',
+    duration: 'أقل من ساعة غالبًا',
+    access: 'مجاني بحساب GitHub',
+    language: 'الإنجليزية',
+  },
+  {
+    id: 'microsoft-data-analytics',
+    title: 'Get started with Microsoft data analytics',
+    provider: 'Microsoft Learn',
+    url: 'https://learn.microsoft.com/en-us/training/paths/data-analytics-microsoft/',
+    skillIds: ['T0217', 'T0224', 'T0255', 'T0682'],
+    level: 'متوسط',
+    duration: 'نحو ساعة ونصف',
+    access: 'تعلم ذاتي مجاني',
+    language: 'تتوفر العربية في أجزاء من Microsoft Learn',
+  },
+  {
+    id: 'microsoft-power-bi-data',
+    title: 'Prepare data for analysis with Power BI',
+    provider: 'Microsoft Learn',
+    url: 'https://learn.microsoft.com/en-us/training/paths/prepare-data-power-bi/',
+    skillIds: ['T0223', 'T0255', 'T0217', 'T0258'],
+    level: 'متوسط',
+    duration: 'مسار تعلم ذاتي',
+    access: 'تعلم ذاتي مجاني',
+    language: 'تتوفر العربية في أجزاء من Microsoft Learn',
+  },
+  {
+    id: 'google-ml-crash-course',
+    title: 'Machine Learning Crash Course',
+    provider: 'Google for Developers',
+    url: 'https://developers.google.com/machine-learning/crash-course',
+    skillIds: ['T0498', 'T0483', 'T0047', 'T0244', 'T0783'],
+    level: 'مبتدئ مع متطلبات Python ورياضيات أساسية',
+    duration: 'وحدات ذاتية قصيرة وتمارين عملية',
+    access: 'مجاني',
+    language: 'الإنجليزية',
+  },
+  {
+    id: 'cisco-intro-cybersecurity',
+    title: 'Introduction to Cybersecurity',
+    provider: 'Cisco Networking Academy',
+    url: 'https://www.netacad.com/courses/introduction-to-cybersecurity',
+    skillIds: ['T0210', 'T0357', 'T0408', 'T0179', 'T0893'],
+    level: 'مبتدئ',
+    duration: '6 ساعات تقريبًا',
+    access: 'مجاني مع شارة إتمام بحسب صفحة المزود',
+    language: 'العربية متاحة',
+  },
+  {
+    id: 'portswigger-web-security-academy',
+    title: 'Web Security Academy',
+    provider: 'PortSwigger',
+    url: 'https://portswigger.net/web-security/learning-paths',
+    skillIds: ['T0038', 'T0893', 'T0605'],
+    level: 'من مبتدئ إلى متقدم',
+    duration: 'مسارات وتمارين عملية ذاتية',
+    access: 'مجاني',
+    language: 'الإنجليزية',
+  },
+  {
+    id: 'microsoft-security-operations',
+    title: 'Security Operations Analyst learning path',
+    provider: 'Microsoft Learn',
+    url: 'https://learn.microsoft.com/en-us/training/career-paths/security-operations-analyst',
+    skillIds: ['T0198', 'T0210', 'T0893', 'T0682'],
+    level: 'متوسط',
+    duration: 'عدة مسارات تعلم ذاتي',
+    access: 'تعلم ذاتي مجاني؛ الاختبار المهني منفصل ومدفوع',
+    language: 'تتوفر العربية في أجزاء من Microsoft Learn',
+  },
+  {
+    id: 'cisco-networking-basics',
+    title: 'Networking Basics',
+    provider: 'Cisco Networking Academy',
+    url: 'https://www.netacad.com/courses/networking-basics',
+    skillIds: ['T0547', 'T0543', 'T0548', 'T0560', 'T0563', 'T0571'],
+    level: 'مبتدئ',
+    duration: '22 ساعة تقريبًا',
+    access: 'مجاني مع شارة إتمام بحسب صفحة المزود',
+    language: 'العربية متاحة',
+  },
+  {
+    id: 'microsoft-data-engineering-azure',
+    title: 'Get started with data engineering on Azure',
+    provider: 'Microsoft Learn',
+    url: 'https://learn.microsoft.com/en-us/training/paths/get-started-data-engineering/',
+    skillIds: ['T0229', 'T0233', 'T0237', 'T0257', 'T0258', 'T0244'],
+    level: 'متوسط',
+    duration: 'نحو 56 دقيقة',
+    access: 'تعلم ذاتي مجاني؛ بعض التمارين قد تحتاج حسابًا أو موارد سحابية',
+    language: 'تتوفر العربية في أجزاء من Microsoft Learn',
+  },
+  {
+    id: 'microsoft-fabric-warehouse',
+    title: 'Implement a data warehouse with Microsoft Fabric',
+    provider: 'Microsoft Learn',
+    url: 'https://learn.microsoft.com/en-us/training/paths/work-with-data-warehouses-using-microsoft-fabric/',
+    skillIds: ['T0229', 'T0233', 'T0257', 'T0258'],
+    level: 'مبتدئ',
+    duration: 'نحو 6 ساعات و38 دقيقة',
+    access: 'تعلم ذاتي مجاني؛ تنفيذ بعض التمارين قد يحتاج بيئة Microsoft',
+    language: 'الإنجليزية مع توفر ترجمة صفحات بحسب Microsoft Learn',
+  },
+  {
+    id: 'microsoft-devops-foundations',
+    title: 'DevOps foundations: core principles and practices',
+    provider: 'Microsoft Learn',
+    url: 'https://learn.microsoft.com/en-us/training/paths/devops-foundations-core-principles-practices/',
+    skillIds: ['T0120', 'T0122', 'T0168', 'T0159', 'T0680', 'T0879'],
+    level: 'مبتدئ',
+    duration: 'نحو 4 ساعات و29 دقيقة',
+    access: 'المحتوى مجاني؛ التمارين العملية قد تحتاج اشتراك Azure، فلا تنشئ موردًا مدفوعًا دون مراجعة',
+    language: 'الإنجليزية مع توفر ترجمة صفحات بحسب Microsoft Learn',
+  },
+  {
+    id: 'coursera-business-analysis-requirements',
+    title: 'Business Analysis: Process Modeling & Requirements Gathering',
+    provider: 'SkillUp على Coursera',
+    url: 'https://www.coursera.org/learn/business-analysis-process-modeling-requirements-gathering',
+    skillIds: ['T0077', 'T0097', 'T0683', 'T0765', 'T0873', 'T0780'],
+    level: 'مبتدئ',
+    duration: 'نحو أسبوعين',
+    access: 'قد يتطلب اشتراكًا للشهادة؛ راجع خيار التجربة أو المساعدة المالية قبل الدفع',
+    language: 'الإنجليزية مع ترجمات بحسب توفر المنصة',
+  },
+];
+
+export const learningResourceIds = new Set(learningResources.map(resource => resource.id));
+
+export function getLearningResources(skillId: string): LearningResource[] {
+  return learningResources.filter(resource => resource.skillIds.includes(skillId));
+}

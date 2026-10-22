@@ -1,0 +1,3 @@
+/generated-artifacts/
+supabase/functions/.env
+supabase/functions/.env.*

@@ -1,0 +1,9 @@
+- [Project scope and target](import-intent.md) — Phase 1 only, one bounded task at a time; preserve prior additions without expanding them.
+- [Account confirmation scope](account-confirmation.md) — Six-digit email code confirms new accounts only; ordinary login remains password-based.
+- [Protected Replit configuration](replit-configuration.md) — Structural .replit edits require validated replacement, not direct patches.
+- [Expo proxy environment](expo-proxy.md) — The public origin must reach Expo before dotenv; verify generated native URLs, not just the web preview.
+- [CV development boundary](cv-development-boundary.md) — Development HTTPS connectivity does not authorize wider CORS, a public backend listener, or sending a CV.
+- [CV upload formats](cv-file-scope.md) — PDF only; images, Word/DOCX and OCR are explicitly outside the requested scope.
+- [CV provenance and RTL](cv-rtl-evidence.md) — Preserve field sources and section boundaries; never guess titles, reverse dates, or merge ambiguous columns.
+- [Phase 1 service boundaries](phase1-service-boundaries.md) — Keep existing Supabase and opt-in sync; practice scores and curated catalogs are not verified credentials or live services.
+- [Student without a CV](student-without-cv.md) — New graduates can complete a profile without a CV or work experience; preserve existing facts and reuse the same profile.

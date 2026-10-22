@@ -1,0 +1,52 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const projectModule = require('./helpers/project-module.cjs');
+const plain = value => JSON.parse(JSON.stringify(value));
+const overrides = { 'src/utils/scoped-storage.ts': { __esModule: true, default: {} } };
+test('real role readiness rejects mobile as BI and counts a genuine BI project; technologies are included', () => {
+  const load = projectModule(overrides);
+  const { jobPaths } = load('src/constants/job-paths.ts');
+  const requirements = load('src/constants/job-path-requirements.ts');
+  const { calculateCareerReadiness } = load('src/utils/career-readiness.ts');
+  const bi = jobPaths.find(item => item.title.includes('Business Intelligence'));
+  const core = requirements.requirementsForCareerPath(bi.id).filter(item => item.priority === 'core').map(item => item.skill_id);
+  const input = { skillProfile: { skill_ids: core, cv: { projects: [{ name: 'Mobile application demo' }], experiences: [] } }, personal: null, learningProgress: {}, professionalCertifications: [] };
+  assert.equal(calculateCareerReadiness(bi.id, input).evidence.projects, 0);
+  assert.equal(calculateCareerReadiness(bi.id, input).breakdown.practical, 0);
+  input.skillProfile.cv.projects = [{ name: 'Revenue dashboard', technologies: ['Power BI'] }];
+  assert.equal(calculateCareerReadiness(bi.id, input).evidence.projects, 1);
+  const { containsEvidenceTerm } = load('src/utils/evidence-keywords.ts');
+  assert.equal(containsEvidenceTerm('javascript', 'java'), false);
+  assert.equal(containsEvidenceTerm('البرمجة', 'برمج'), true);
+});
+test('CV education imports college, major and explicit status without mistaking prose for study status', () => {
+  const load = projectModule(overrides);
+  const { emptyPersonalProfile } = load('src/utils/personal-profile.ts');
+  const { mergeCvEducation } = load('src/utils/profile-education.ts');
+  const degree = { name: 'BSc Computing', organization: 'Synthetic University', college: 'Synthetic College', major: 'Computer Science', study_status: 'Expected graduation', dates: '2022–2027', description: 'Some unrelated description', evidence: 'Synthetic evidence' };
+  const result = mergeCvEducation(emptyPersonalProfile(), degree);
+  assert.equal(result.college, degree.college); assert.equal(result.major, degree.major); assert.equal(result.studyStatus, degree.study_status);
+  delete degree.study_status;
+  assert.equal(mergeCvEducation({ ...emptyPersonalProfile(), studyStatus: 'Still studying' }, degree).studyStatus, 'Still studying');
+});
+test('personal roadmap derives missing skills and practical evidence, never duplicates or deletes owned skills', () => {
+  const load = projectModule(overrides);
+  const { jobPaths } = load('src/constants/job-paths.ts');
+  const req = load('src/constants/job-path-requirements.ts');
+  const { personalLearningPlan } = load('src/utils/personal-learning-plan.ts');
+  const path = jobPaths.find(item => item.title === 'Frontend Developer') ?? jobPaths[0];
+  const requirements = req.requirementsForCareerPath(path.id).filter(item => item.priority === 'core');
+  const plan = personalLearningPlan(path.id, { skill_ids: [requirements[0].skill_id] }, []);
+  assert.equal(plan.includes(requirements[0].skill_id), false);
+  assert.ok(plan.includes(requirements[1].skill_id));
+  assert.ok(plan.some(id => id.startsWith('project:')));
+  assert.equal(plan.length, new Set(plan).size);
+});
+test('course completion and independent certificates remain separate and require exact matching', () => {
+  const load = projectModule(overrides);
+  const { qualificationMatches } = load('src/utils/qualification-matches.ts');
+  const matches = qualificationMatches({ certificates: [{ name: 'GitHub Foundations', issuer: 'GitHub' }], courses: [{ name: 'Introduction to Software Engineering' }] });
+  assert.deepEqual(plain(matches.certificates.map(item => item.id)), ['github-foundations']);
+  assert.equal(matches.courses.length, 1);
+  assert.equal(qualificationMatches({ certificates: [{ name: 'Introduction to Software Engineering', issuer: 'IBM' }], courses: [] }).certificates.length, 0);
+});

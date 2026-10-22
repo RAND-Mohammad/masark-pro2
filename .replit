@@ -1,0 +1,46 @@
+modules = ["web", "nodejs-22", "python-base-3.13", "deno-2"]
+
+[nix]
+channel = "stable-25_05"
+
+[agent]
+expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Masarak preview"
+
+[[workflows.workflow]]
+name = "Masarak preview"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "EXPO_PACKAGER_PROXY_URL=\"https://$REPLIT_DEV_DOMAIN\" EXPO_UNSTABLE_HEADLESS=1 node scripts/start-dev.mjs"
+waitForPort = 5000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
+
+[userenv]
+
+[userenv.shared]
+EMAIL_HOOK_SENDER_ID = "1"
+EMAIL_HOOK_REDIRECT_URLS = "[\"https://7026c07b-53e3-497d-affa-b6aac928fb2c-00-6jtedkfbfatg.pike.replit.dev/auth-callback\",\"masarak://auth-callback\"]"
+

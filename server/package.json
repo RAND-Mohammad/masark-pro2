@@ -1,0 +1,16 @@
+{
+  "name": "masarak-cv-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "mammoth": "^1.11.0",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "5.4.296"
+  }
+}
