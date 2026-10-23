@@ -73,7 +73,13 @@ export default function CreateProfileScreen() {
     {!base ? <Text style={ui.note}>جارٍ تحميل ملفك الحالي…</Text> : saved ? <>
       <Text accessibilityRole="alert" style={ui.heading}>تم حفظ ملفك على هذا الجهاز</Text>
       <Text style={ui.note}>الحفظ السحابي يتبع خيار المزامنة الحالي في «ملفي»؛ هذه الرسالة لا تثبت اكتمال مزامنة Supabase.</Text>
-    </> : <Text style={ui.heading}>الخطوة {step + 1} من {steps.length} · {steps[step]}</Text>}
+    </> : <View style={{ gap: 8 }}>
+      <Text accessibilityRole="header" style={ui.heading}>{steps[step]}</Text>
+      <View accessibilityRole="progressbar" accessibilityLabel="تقدم إنشاء الملف" accessibilityValue={{ min: 0, max: steps.length, now: step + 1, text: `${step + 1} من ${steps.length}` }} style={{ height: 9, borderRadius: 99, backgroundColor: colors.soft, overflow: 'hidden' }}>
+        <View style={{ width: `${((step + 1) / steps.length) * 100}%`, height: '100%', alignSelf: 'flex-end', backgroundColor: colors.primary, borderRadius: 99 }} />
+      </View>
+      <Text style={ui.note}>الخطوة {step + 1} من {steps.length}</Text>
+    </View>}
     {base && !saved && <View style={ui.card}>
       {step === 0 && <>
         {input('الاسم (اختياري)', answers.name, v => change('name', v))}

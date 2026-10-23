@@ -2,18 +2,14 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, ui } from '../constants/design';
 import { MasarakIcon } from './masarak-icon';
+import { DisclosureCard } from './disclosure-card';
 
 export function ProfileEntryChoices() {
   const router = useRouter();
 
   return (
-    <View style={styles.container}>
+    <DisclosureCard title="ابدئي ملفك المهني" subtitle="اختاري طريقة إدخال بياناتك" summary="أسئلة قصيرة أو رفع سيرة PDF اختياري" status="خطوة أولى" statusTone="success" defaultExpanded>
       <View style={styles.intro}>
-        <View style={styles.mark}>
-          <MasarakIcon name="profile" size={25} />
-        </View>
-        <Text style={ui.eyebrow}>خطوتك الأولى في مسارك المهني</Text>
-        <Text style={ui.heading}>كيف تود أن تبدأ؟</Text>
         <Text style={ui.text}>
           لا تحتاج إلى خبرة عمل لتبدأ. اختر الطريقة الأنسب لك، ويمكنك إضافة سيرة ذاتية لاحقًا.
         </Text>
@@ -62,19 +58,11 @@ export function ProfileEntryChoices() {
       <Text style={styles.optionalNote}>
         رفع السيرة الذاتية اختياري؛ يمكنك بناء ملفك دونها.
       </Text>
-    </View>
+    </DisclosureCard>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    maxWidth: 620,
-    alignSelf: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    gap: 14,
-  },
   intro: {
     alignItems: 'flex-end',
     gap: 10,

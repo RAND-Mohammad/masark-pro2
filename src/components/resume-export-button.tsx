@@ -23,7 +23,7 @@ export function ResumeExportButton({ personal, skills, assertCurrent }: {
       assertCurrent();
       if (active.current) setMessage(result === 'native-share'
         ? 'تم تجهيز PDF وفتح المشاركة. الحفظ أو الإرسال حسب اختيارك.'
-        : 'فُتحت الطباعة. اختر حفظ PDF من المتصفح.');
+        : 'في نافذة الطباعة اختاري «Save as PDF / حفظ PDF»، ثم «Save / حفظ».');
     } catch (failure) {
       if (active.current) setError(failure instanceof Error ? failure.message : 'تعذر تصدير PDF. حاول مجددًا.');
     } finally {

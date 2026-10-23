@@ -32,7 +32,7 @@ Date: 2025`;
 try {
   const pdf = syntheticPdf(sample.split('\n'), { fontSize: 8 });
   const text = await extractText({ originalname: 'synthetic.pdf', mimetype: 'application/pdf', buffer: pdf });
-  const result = await analyzeText(text, { key: process.env.Gemini_API_Key_masarak?.trim(), pdf });
+  const result = await analyzeText(text, { key: process.env.GROQ_API_KEY?.trim() });
   assert.ok(result.education.length);
   assert.ok(result.education.some(item => /Demo University/i.test(item.organization) && /Computer Science/i.test(item.major)));
   assert.ok(result.projects.some(item => /Encrypted Notes/i.test(item.name) && /encrypt files/i.test(item.description)));

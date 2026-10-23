@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeLegacyGroqText as analyzeText, validateAnalysis } from './analysis.mjs';
+import { analyzeGroqText as analyzeText, validateAnalysis } from './analysis.mjs';
 
 const lines = [
   'EDUCATION',

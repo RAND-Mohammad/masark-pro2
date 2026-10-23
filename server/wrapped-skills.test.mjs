@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeLocalText, analyzeLegacyGroqText as analyzeText, extractText } from './analysis.mjs';
+import { analyzeLocalText, analyzeGroqText as analyzeText, extractText } from './analysis.mjs';
 import { recoverListedSkills } from './skill-list-recovery.mjs';
 import { findSourceExcerpt } from './evidence-match.mjs';
 import { plainLayoutText } from './layout-reader.mjs';

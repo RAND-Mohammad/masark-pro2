@@ -59,7 +59,7 @@ export function createReanalysisReview(next: CvAnalysis, previous: CvReview | nu
     Object.assign(result, { [section]: selections });
   }
   if (protectedRows.length) {
-    result.analysis.warnings = [...next.warnings, 'احتُفظ بالبنود المصححة أو المضافة يدويًا كاملةً وباستبعاداتك السابقة. البنود ذات الربط الملتبس قد تظهر مع الاستخراج الجديد؛ راجع التكرار والحقول قبل الاعتماد.'];
+    result.analysis.warnings = [...next.warnings, 'احتفظنا بتعديلاتك واستبعاداتك السابقة. قد يظهر بند مكرر؛ راجعيه قبل الاعتماد.'];
   }
   if (previous) result.previous_review = withoutHistory(previous);
   if (approved) result.previous_approved = approved;

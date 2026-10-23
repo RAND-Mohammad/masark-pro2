@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { analyzeLegacyGroqText as analyzeText, analyzeLocalText, extractText, validateAnalysis, dictionary } from './analysis.mjs';
+import { analyzeGroqText as analyzeText, analyzeLocalText, extractText, validateAnalysis, dictionary } from './analysis.mjs';
 import { syntheticPdf } from './fixtures/synthetic-pdf.mjs';
 import { providerResult } from './fixtures/provider-result.mjs';
 

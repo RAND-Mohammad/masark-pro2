@@ -64,7 +64,8 @@ export function updateCvReviewItem(review: CvReview, section: ReviewSection, ind
 export function addCvReviewItem(review: CvReview, section: ReviewSection): CvReview {
   const rows = review.analysis[section] ?? [];
   const item = section === 'skills' ? { name: '', evidence: '', mapped_skill_id: null }
-    : section === 'courses' || section === 'certificates' ? { name: '', issuer: '', date: '', evidence: '' }
+    : section === 'courses' ? { name: '', issuer: '', date: '', duration: '', evidence: '' }
+      : section === 'certificates' ? { name: '', issuer: '', date: '', evidence: '' }
       : section === 'experiences' ? { role: '', organization: '', location: '', dates: '', description: '', evidence: '' }
         : { name: '', organization: '', dates: '', description: '', evidence: '' };
   if (rows.length >= 80) return review;

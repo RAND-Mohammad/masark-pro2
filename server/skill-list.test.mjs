@@ -10,12 +10,11 @@ test('recovers Python and C++ when the model returns only Java from their shared
   const pdf = syntheticPdf([line]);
   const source = await extractText({ buffer: pdf, originalname: 'synthetic-skills.pdf', mimetype: 'application/pdf' });
   const initial = providerResult({ skills: [{ name: 'Java', mapped_skill_id: null, evidence: line }] });
-  initial.skills[0].field_sources = [{ field: 'name', quote: 'Java', page: 1 }];
   let calls = 0;
-  const result = await analyzeText(source, { key: 'test-only', pdf, client: { models: { generateContent: async () => {
+  const result = await analyzeText(source, { key: 'test-only', fetchImpl: async () => {
     calls++;
-    return { text: JSON.stringify(initial), candidates: [{ finishReason: 'STOP' }] };
-  } } } });
+    return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(initial) } }] }));
+  } });
   assert.deepEqual(result.skills.map(skill => skill.name), ['Java', 'Python', 'C++']);
   assert.ok(result.skills.every(skill => skill.mapped_skill_id === 'T0644'));
   assert.equal(calls, 1);

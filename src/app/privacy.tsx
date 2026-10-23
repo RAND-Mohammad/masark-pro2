@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, Text } from 'react-native';
+import { Linking, Pressable, ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ui } from '../constants/design';
 export default function PrivacyScreen() {
@@ -12,10 +12,11 @@ export default function PrivacyScreen() {
     <Text style={ui.heading}>الحفظ السحابي اختياري وحقيقي</Text>
     <Text style={ui.text}>عند تفعيله، يرسل التطبيق الملف المهني وخطة التعلم ونتائج السيرة والمقابلات إلى قاعدة Supabase، ويحفظ PDF في مخزن خاص بالحساب. إيقاف المزامنة لا يحذف النسخة السحابية. راجع حالة المزامنة ولا تفترض نجاح الحفظ عند وجود خطأ.</Text>
     <Text style={ui.heading}>التحليل والمزود الخارجي</Text>
-    <Text style={ui.text}>خادم التحليل يستقبل PDF بعد التحقق من الجلسة ويقرأ النص في الذاكرة. بعد موافقتك يرسل ملف PDF ونصه إلى Google Gemini، ثم يطابق أدلة النتيجة مع النص المقروء. عند غياب المفتاح أو تعذر النموذج يظهر خطأ دون تحليل محلي بديل. وفق خطة Google المجانية، قد تُستخدم بيانات الطلب لتحسين منتجاتها؛ استخدم سيرة وهمية أو منقحة للاختبار، وراجع خطة المفتاح قبل إرسال بيانات حقيقية. تدريب المقابلة منفصل: محلي افتراضيًا، وإرسال الإجابة إلى Groq يحتاج موافقة مستقلة.</Text>
+    <Text style={ui.text}>يقرأ الخادم نص PDF في الذاكرة بعد التحقق من الجلسة، ثم يرسل النص المستخرج إلى Groq بعد موافقتك. يراجع الخادم الأدلة قبل عرض النتيجة، وتحتاج النتيجة مراجعتك. لا تُحتفظ طلبات الاستدلال لدى Groq افتراضيًا؛ قد تُسجل مؤقتًا لأسباب موثوقية الخدمة أو إساءة الاستخدام حتى 30 يومًا، ولا تُستخدم لتدريب نماذج Groq وفق وثائقها. استخدم سيرة تجريبية أو منقحة للاختبار. عند غياب المفتاح أو تعذر الخدمة يظهر خطأ دون نتيجة بديلة. تقييم المقابلة منفصل ويحتاج موافقة مستقلة.</Text>
     <Text style={ui.heading}>المراجعة والحذف</Text>
     <Text style={ui.text}>يمكن تعديل بياناتك وحذف السيرة ونتائج المقابلات من واجهاتها؛ المزامنة المفعلة تنقل التغيير للحساب. إزالة مستند السيرة لا تمحو المهارات التي سبق اعتمادها؛ راجعها في ملف المهارات. سجل التدريب محدود بـ100 نتيجة ولا يحذف الأقدم تلقائيًا. حذف الحساب الكامل وجميع النسخ ليس متاحًا من الواجهة بعد، ويجب استكماله والتحقق من سياسة الاحتفاظ قبل الإطلاق العام.</Text>
     <Text style={ui.heading}>Privacy summary</Text>
-    <Text style={[ui.text, { textAlign: 'left', writingDirection: 'ltr' }]}>Guest data stays on the device. Account cloud backup is opt-in and uses Supabase PostgreSQL and private file storage. After explicit consent, the server sends the PDF and extracted text to Google Gemini for resume analysis; results are checked against the extracted text and still need user review. Google may use free-tier prompts to improve its products, so use a synthetic or redacted resume for testing. Interview AI is separate and requires its own consent. Scores are not hiring guarantees. Full account erasure and a finalized retention policy remain release requirements. This notice describes the implementation, not a finalized legal privacy policy.</Text>
+    <Text style={[ui.text, { textAlign: 'left', writingDirection: 'ltr' }]}>Guest data stays on the device. Account cloud backup is opt-in and uses Supabase PostgreSQL and private file storage. After explicit consent, the server extracts text from the PDF and sends that text to Groq for resume analysis. Groq says inference data is not retained by default and is not used to train its models; limited reliability or abuse logs may be retained for up to 30 days. Analysis evidence is checked against the extracted text and still needs user review. Use a synthetic or redacted resume for testing. Interview AI is separate and requires its own consent. Scores are not hiring guarantees. Full account erasure and a finalized retention policy remain release requirements. This notice describes the implementation, not a finalized legal privacy policy.</Text>
+    <Pressable accessibilityRole="link" onPress={() => void Linking.openURL('https://console.groq.com/docs/your-data')}><Text style={ui.link}>Groq data practices</Text></Pressable>
   </ScrollView></SafeAreaView>;
 }

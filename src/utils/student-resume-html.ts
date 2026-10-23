@@ -1,5 +1,6 @@
 import type { PersonalProfile } from './personal-profile';
 import type { SkillProfile } from './skill-profile';
+import { studentResumeEducationLines } from './student-resume-education';
 
 const escape = (value: string) => value.replace(/[&<>"']/gu, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 export function studentResumeHtml(p: PersonalProfile, s: SkillProfile): string {
@@ -7,6 +8,7 @@ export function studentResumeHtml(p: PersonalProfile, s: SkillProfile): string {
   const text = (value: string) => `<p dir="auto">${escape(value)}</p>`;
   const heading = (value: string) => `<h2>${escape(value)}</h2>`;
   const join = (items: (string | undefined)[]) => items.filter(Boolean).join(' · ');
+  const education = studentResumeEducationLines(p, cv?.education ?? []);
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
   <title>مسارك — سيرة أولية</title><style>
@@ -15,8 +17,7 @@ export function studentResumeHtml(p: PersonalProfile, s: SkillProfile): string {
   p{white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}.entry{break-inside:avoid;margin-bottom:14px}
   @page{size:A4;margin:18mm}@media print{body{padding:0;margin:0;max-width:none}}
   </style></head><body><h1>${escape(p.name || 'ملفي المهني')}</h1>
-  ${heading('التعليم')}${text(join([p.education, p.major, p.institution, p.studyStatus, p.studyDates]))}
-  ${(cv?.education ?? []).map(e => text(join([e.name, e.major, e.organization, e.study_status, e.dates]))).join('')}
+  ${heading('التعليم')}${education.map(text).join('')}
   ${heading('المهارات')}${text((cv?.skills ?? []).map(row => row.name).join('، '))}
   ${heading('المشاريع')}${(cv?.projects ?? []).map(row => `<div class="entry">${text(row.name)}${text(row.description)}${text(row.technologies?.join('، ') ?? '')}</div>`).join('')}
   ${heading('الدورات')}${(cv?.courses ?? []).map(row => text(join([row.name, row.issuer, row.date]))).join('')}

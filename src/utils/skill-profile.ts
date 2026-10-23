@@ -3,12 +3,12 @@ import dataset from '../masarak_dataset.json';
 
 type CvPages = { field_pages?: Record<string, number[]> };
 export type CvSkill = CvPages & { name: string; mapped_skill_id: string | null; evidence: string; field_evidence?: Record<string, string> };
-export type CvCertificate = CvPages & { name: string; issuer: string; date: string; evidence: string; field_evidence?: Record<string, string> };
+export type CvCertificate = CvPages & { name: string; issuer: string; date: string; duration?: string; evidence: string; field_evidence?: Record<string, string> };
 export type CvExperience = CvPages & { role: string; organization: string; dates: string; description: string; evidence: string; location?: string; field_evidence?: Record<string, string> };
 export type CvEntry = CvPages & { name: string; organization: string; dates: string; description: string; evidence: string;
   field_evidence?: Record<string, string>; needs_review?: string[] };
-export type CvEducation = CvEntry & { college?: string; major?: string; study_status?: string };
-export type CvProject = CvEntry & { role?: string; technologies?: string[]; category?: string; category_basis?: string; category_evidence?: string };
+export type CvEducation = CvEntry & { college?: string; major?: string; study_status?: string; gpa?: string };
+export type CvProject = CvEntry & { role?: string; technologies?: string[]; duration?: string; category?: string; category_basis?: string; category_evidence?: string };
 export type CvAnalysis = {
   entry_method?: 'answers';
   skills: CvSkill[]; certificates: CvCertificate[]; courses?: CvCertificate[]; experiences: CvExperience[];
@@ -33,7 +33,7 @@ export function isCvAnalysis(value: unknown): value is CvAnalysis {
     && rows('certificates', ['name', 'issuer', 'date', 'evidence']) && (data.courses === undefined || rows('courses', ['name', 'issuer', 'date', 'evidence']))
     && rows('experiences', ['role', 'organization', 'dates', 'description', 'evidence'])
     && (['education', 'projects', 'activities', 'unclassified'] as const).every(section => data[section] === undefined || rows(section, ['name', 'organization', 'dates', 'description', 'evidence']))
-    && optionalText('education', ['college', 'major', 'study_status']) && optionalText('projects', ['role', 'category', 'category_basis', 'category_evidence']) && optionalText('experiences', ['location'])
+    && optionalText('education', ['college', 'major', 'study_status', 'gpa']) && optionalText('projects', ['role', 'duration', 'category', 'category_basis', 'category_evidence']) && optionalText('courses', ['duration']) && optionalText('experiences', ['location'])
     && ['skills', 'education', 'projects', 'experiences', 'courses', 'certificates', 'activities', 'unclassified'].every(section =>
       data[section] === undefined || (data[section] as Record<string, unknown>[]).every(item =>
         item.field_pages === undefined || (!!item.field_pages && typeof item.field_pages === 'object' && !Array.isArray(item.field_pages)
@@ -42,7 +42,7 @@ export function isCvAnalysis(value: unknown): value is CvAnalysis {
             && pages.every(page => Number.isInteger(page) && page >= 1 && page <= 15)))))
     && (['education', 'projects', 'experiences', 'courses', 'certificates'] as const).every(section => data[section] === undefined || (data[section] as CvEntry[]).every(item =>
       (item.field_evidence === undefined || (!!item.field_evidence && typeof item.field_evidence === 'object' && !Array.isArray(item.field_evidence)
-        && Object.entries(item.field_evidence).length <= 16 && Object.entries(item.field_evidence).every(([key, quote]) => ['name', 'organization', 'issuer', 'date', 'dates', 'description', 'college', 'major', 'study_status', 'role', 'location', 'technologies', 'category'].includes(key) && typeof quote === 'string')))
+        && Object.entries(item.field_evidence).length <= 16 && Object.entries(item.field_evidence).every(([key, quote]) => ['name', 'organization', 'issuer', 'date', 'dates', 'duration', 'description', 'college', 'major', 'study_status', 'gpa', 'role', 'location', 'technologies', 'category'].includes(key) && typeof quote === 'string')))
       && (item.needs_review === undefined || (isIds(item.needs_review) && item.needs_review.length <= 16))))
     && (data.projects === undefined || (data.projects as CvProject[]).every(item => item.technologies === undefined || isIds(item.technologies)))
     && (data.analyzed_at === undefined || (typeof data.analyzed_at === 'string' && Number.isFinite(Date.parse(data.analyzed_at))))

@@ -37,11 +37,9 @@ test('analysis repairs missing and contradictory literal mappings but retains se
     { name: 'Java', evidence: lines[0], mapped_skill_id: null },
     { name: 'Linux OS', evidence: lines[1], mapped_skill_id: 'T0543' },
   ] });
-  provider.skills[0].field_sources = [{ field: 'name', quote: 'Java', page: 1 }];
-  provider.skills[1].field_sources = [{ field: 'name', quote: 'Linux OS', page: 1 }];
-  const result = await analyzeText(source, { key: 'test-only', pdf, client: { models: { generateContent: async () => ({
-    text: JSON.stringify(provider), candidates: [{ finishReason: 'STOP' }],
-  }) } } });
+  const result = await analyzeText(source, { key: 'test-only', fetchImpl: async () => new Response(JSON.stringify({
+    choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(provider) } }],
+  })) });
   assert.equal(result.skills.length, 5);
   assert.equal(result.skills.find(skill => skill.name === 'Linux OS').mapped_skill_id, 'T0153');
   assert.equal(result.skills.find(skill => skill.name === 'Python').mapped_skill_id, 'T0644');

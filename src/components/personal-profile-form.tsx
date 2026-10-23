@@ -9,6 +9,7 @@ import { readSkillProfile } from '../utils/skill-profile';
 import { careerTitles } from '../utils/career-matches';
 import { jobPaths } from '../constants/job-paths';
 import { mergeCvEducation } from '../utils/profile-education';
+import { DisclosureCard } from './disclosure-card';
 
 const splitList = (text: string) => [...new Set(text.split(/[,،;؛\n]/).map(item => item.trim()).filter(Boolean))];
 export function PersonalProfileForm() {
@@ -61,8 +62,9 @@ export function PersonalProfileForm() {
     { key: 'studyStatus', label: 'حالة الدراسة', placeholder: 'مثل أدرس حاليًا أو متخرج' },
     { key: 'studyDates', label: 'فترة الدراسة', placeholder: 'الفترة كما وردت في سيرتك' },
   ];
-  return <View style={ui.card}>
-    <Text style={ui.heading}>بياناتي وتعليمي واهتماماتي</Text>
+  const summary = [profile.major, profile.institution, profile.studyStatus || profile.education].filter(Boolean).join(' · ') || 'أضيفي تعليمك وبياناتك الأساسية عند استعدادك.';
+  const hasProfileDetails = Boolean(profile.name || profile.institution || profile.education || profile.major);
+  return <DisclosureCard title="ملفي الشخصي" subtitle="التعليم والاهتمامات" summary={ready ? summary : 'جارٍ تحميل الملف'} status={ready ? hasProfileDetails ? 'مضاف' : 'اختياري' : undefined} statusTone={hasProfileDetails ? 'success' : 'neutral'} actionLabel={ready && !editing ? 'تعديل' : undefined} onAction={() => { setMessage(''); setEditing(true); }}>
     {!ready ? <ActivityIndicator color={colors.primary} /> : editing ? <>
       <Text style={ui.note}>تخصصي الجامعي</Text>
       <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 }}>
@@ -90,9 +92,8 @@ export function PersonalProfileForm() {
       {profile.traits.length > 0 && <Text style={ui.text}>سماتي: {profile.traits.join('، ')}</Text>}
       {!!profile.careerGoal && <Text style={ui.text}>هدفي: {careerTitles[profile.careerGoal]}</Text>}
       <Text style={ui.note}>المؤهل والمعدل يدخلان بوزن محدود في الجاهزية المركبة، ويظهر تفصيل الوزن داخل كل مسار.</Text>
-      <Pressable accessibilityRole="button" style={ui.outline} onPress={() => { setMessage(''); setEditing(true); }}><Text style={ui.outlineText}>تعديل بياناتي</Text></Pressable>
     </>}
     {!!message && <Text style={ui.note}>{message}</Text>}
     {!!error && <Text accessibilityRole="alert" style={[ui.text, { color: colors.error }]}>{error}</Text>}
-  </View>;
+  </DisclosureCard>;
 }

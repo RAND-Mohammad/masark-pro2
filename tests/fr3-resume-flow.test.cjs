@@ -34,13 +34,12 @@ for (const language of ['en', 'ar', 'wrapped-skills']) {
       authenticate: createCvSessionGuard({ url: 'https://synthetic-project.supabase.co', key: 'sb_publishable_test-only',
         fetchImpl: async (_url, options) => { authRequests.push(options.headers.Authorization); return new Response(JSON.stringify({ id: 'synthetic-owner' })); } }),
       // Local parser fixtures remain unit/integration tests, not a production fallback.
-      analyzeCvText: (text, { pdf }) => language !== 'wrapped-skills' ? analyzeLocalText(text) : analyzeText(text, {
-        key: 'synthetic-test-key', pdf, client: { models: { generateContent: async () => {
+      analyzeCvText: text => language !== 'wrapped-skills' ? analyzeLocalText(text) : analyzeText(text, {
+        key: 'synthetic-test-key', fetchImpl: async () => {
           providerCalls++;
           const payload = providerResult({ skills: incompleteSkills(text) });
-          for (const row of payload.skills) row.field_sources = [{ field: 'name', quote: row.name, page: 1 }];
-          return { text: JSON.stringify(payload), candidates: [{ finishReason: 'STOP' }] };
-        } } },
+          return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(payload) } }] }));
+        },
       }),
     });
     const server = http.createServer(app);
@@ -79,7 +78,7 @@ for (const language of ['en', 'ar', 'wrapped-skills']) {
     await h.flush();
     await h.press('اختيار السيرة من الملفات');
     assert.ok(h.text().includes('fictional.pdf'), h.text());
-    await h.press('أوافق على إرسال ملف PDF ونص السيرة إلى Google Gemini لتحليله، ثم مراجعة النتائج قبل اعتمادها.');
+    await h.press('أوافق على إرسال نص السيرة إلى Groq.');
     await h.press('تحليل السيرة الذاتية');
     await waitFor(h, () => count(h, 'المهارات') !== undefined);
     assert.deepEqual(statuses, [200]);

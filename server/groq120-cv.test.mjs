@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeLegacyGroqText as analyzeText, analysisSchema, extractText } from './analysis.mjs';
+import { analyzeGroqText as analyzeText, analysisSchema, extractText } from './analysis.mjs';
 import { verifyFieldProvenance } from './cv-provenance.mjs';
 import { providerResult } from './fixtures/provider-result.mjs';
 import { syntheticPdf } from './fixtures/synthetic-pdf.mjs';

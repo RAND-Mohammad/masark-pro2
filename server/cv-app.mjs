@@ -4,6 +4,7 @@ import { analyzeText, extractText, CvError } from './analysis.mjs';
 import { createEmailHookRouter } from './auth-email-hook.mjs';
 import { createCvSessionGuard } from './cv-session.mjs';
 import { createInterviewRouter } from './interview.mjs';
+import { CV_PARSER_VERSION } from '../src/utils/cv-parser-version.mjs';
 
 // Separating construction from listening lets tests use a loopback-only server.
 export function createCvApp({
@@ -27,7 +28,9 @@ export function createCvApp({
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
-  app.get('/health', (_req, res) => res.json({ status: 'ok', configured: Boolean(process.env.Gemini_API_Key_masarak?.trim()) }));
+  app.get('/health', (_req, res) => res.json({
+    status: 'ok', configured: Boolean(process.env.GROQ_API_KEY?.trim()), parserVersion: CV_PARSER_VERSION,
+  }));
   app.use('/interview', createInterviewRouter({ authenticate }));
   app.post('/analyze-cv', authenticate, (req, res, next) => {
     while (attempts.length && Date.now() - attempts[0] > 60000) attempts.shift();
@@ -41,7 +44,10 @@ export function createCvApp({
     try {
       if (req.body.consent !== 'true') throw new CvError('أكد موافقتك على إرسال محتوى السيرة للتحليل.');
       const text = await extractCvText(req.file);
-      const analysis = await analyzeCvText(text, { key: process.env.Gemini_API_Key_masarak?.trim(), pdf: req.file.buffer });
+      const analysis = await analyzeCvText(text, {
+        key: process.env.GROQ_API_KEY?.trim(),
+        model: process.env.GROQ_CV_MODEL?.trim() || undefined,
+      });
       res.json(analysis);
     } catch (error) { next(error); }
   });

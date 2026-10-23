@@ -24,6 +24,7 @@ import { displaySkillName } from '../utils/skill-labels';
 import { jobPathById } from '../constants/job-paths';
 import { jobPathRequirementProfile, requirementsForCareerPath } from '../constants/job-path-requirements';
 import { certificationPlanId, experiencePlanId, projectPlanId } from '../utils/learning-plan';
+import { DisclosureCard } from '../components/disclosure-card';
 
 export default function CareerScreen() {
     const [planning, setPlanning] = useState(false);
@@ -111,8 +112,7 @@ export default function CareerScreen() {
                     <Text style={styles.link}>عرض خطوات التعلم المقترحة</Text>
                 </Pressable>
 
-                <View style={styles.card}>
-                    <Text style={styles.heading}>جاهزيتك المركبة لهذا المسار</Text>
+                <DisclosureCard title="جاهزيتك لهذا المسار" subtitle="تقدير إرشادي" summary={!readinessLoaded ? 'جارٍ جمع أدلة ملفك' : readiness.score === null ? 'أكملي ملفك لعرض الجاهزية' : `${readiness.score}%${level ? ` · ${readinessLabels[level]}` : ''}`} status={readinessLoaded && readiness.score !== null ? `${readiness.score}%` : undefined} statusTone={readiness.score === 100 ? 'success' : 'neutral'}>
 
                     {!readinessLoaded ? (
                         <Text style={styles.note}>جارٍ جمع أدلة ملفك…</Text>
@@ -148,10 +148,9 @@ export default function CareerScreen() {
                             )}
                         </>
                     )}
-                </View>
+                </DisclosureCard>
 
-                <View style={styles.card}>
-                    <Text style={styles.heading}>الشهادات المهنية المقترحة</Text>
+                <DisclosureCard title="الشهادات المهنية" subtitle="اقتراحات اختيارية لهذا المسار" summary={roleCertifications.length ? `${roleCertifications.length} خيارات · تكفي شهادة واحدة` : 'لا توجد شهادة ذات أولوية'} status={roleCertifications.length ? 'اختياري' : 'لا إجراء'}>
                     <Text style={styles.note}>هذه خيارات بديلة؛ تكفي شهادة واحدة مرتبطة بالمسار لنقاط الشهادات. اختر «حصلت عليها» فقط بعد اجتياز الاختبار وصدور الشهادة باسمك. التحضير أو إكمال دورة لا يعني الحصول على الشهادة.</Text>
                     {certificationState.error ? <Pressable onPress={() => void certificationState.reload()}><Text style={styles.link}>{certificationState.error} اضغط لإعادة التحميل.</Text></Pressable> : null}
                     {roleCertifications.map(certificate => {
@@ -166,11 +165,10 @@ export default function CareerScreen() {
                             <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: achieved, disabled: !certificationState.ready || certificationState.busy }} disabled={!certificationState.ready || certificationState.busy} style={[styles.certButton, achieved && styles.certButtonDone]} onPress={() => void certificationState.change(certificate.id, !achieved)}><Text style={styles.certButtonText}>{achieved ? '✓ حصلت على هذه الشهادة' : '□ حصلت على هذه الشهادة'}</Text></Pressable>
                         </View>;
                     })}
-                </View>
+                </DisclosureCard>
 
                 {roleProfile ? (
-                    <View style={styles.card}>
-                        <Text style={styles.heading}>ما يحتاجه هذا المسمى تحديدًا</Text>
+                    <DisclosureCard title="متطلبات هذا المسار" subtitle="التعليم والخبرة والمشاريع" summary={`${roleProfile.education} · ${roleProfile.projects.length} أفكار مشاريع`} status="دليل إرشادي">
                         <Text style={styles.skillName}>المؤهل الجامعي المناسب</Text>
                         <Text style={styles.note}>{roleProfile.education}</Text>
                         <Text style={styles.skillName}>الخبرة العملية</Text>
@@ -186,16 +184,11 @@ export default function CareerScreen() {
                             </Pressable>
                         ))}
                         <Text style={styles.note}>هذه معلومات إرشادية عامة، وإعلان الوظيفة المستهدف هو المرجع النهائي. الشهادة والدليل العملي يدخلان في الجاهزية المركبة كبندين منفصلين، ولا يغيران نسبة تغطية المهارات الأساسية.</Text>
-                    </View>
+                    </DisclosureCard>
                 ) : null}
 
                 {(['core', 'additional'] as const).map((priority) => (
-                    <View key={priority} style={styles.section}>
-                        <Text style={styles.heading}>
-                            {priority === 'core'
-                                ? 'المهارات الأساسية للتجربة'
-                                : 'المهارات الإضافية'}
-                        </Text>
+                    <DisclosureCard key={priority} title={priority === 'core' ? 'المهارات الأساسية' : 'المهارات الإضافية'} subtitle={priority === 'core' ? 'المهارات المطلوبة في المسار' : 'مهارات توسّع فرص التعلم'} summary={`${requirements.filter(item => item.priority === priority).length} مهارات`} status={priority === 'core' ? 'الأولوية' : 'اختياري'} statusTone={priority === 'core' ? 'warning' : 'neutral'}>
 
                         {requirements
                             .filter((item) => item.priority === priority)
@@ -237,11 +230,10 @@ export default function CareerScreen() {
                                     </View>
                                 );
                             })}
-                    </View>
+                    </DisclosureCard>
                 ))}
 
-                <View style={styles.card}>
-                    <Text style={styles.heading}>كيف اخترنا المهارات؟</Text>
+                <DisclosureCard title="مصادر وتفسير المهارات" subtitle="من أين جاءت المتطلبات؟" summary="تعريف مختصر لمصادر البيانات وطريقة التقدير">
                     <Text style={styles.note}>
                         أسماء المهارات وأوصافها من إطار المهارات السعودي.
                         ربطها بهذه الوظيفة تفسير للمصادر المهنية المكملة،
@@ -252,7 +244,7 @@ export default function CareerScreen() {
                         المهارات الإضافية لا تدخل في نسبة التغطية.
                         الأوصاف الإنجليزية معروضة كما وردت في البيانات.
                     </Text>
-                </View>
+                </DisclosureCard>
             </ScrollView>
         </SafeAreaView>
     );

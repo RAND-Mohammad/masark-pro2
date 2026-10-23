@@ -4,12 +4,13 @@ import { isLiteralSkillName, localSectionHeading } from './local-resume.mjs';
 
 // These recognize standalone labels, not forbidden skill names. Inline labels
 // inside a skills section are identified structurally by their separator.
-const categoryName = /^(?:programming languages?|languages?\s*\(programming\)|technical skills?|skills|tools(?:\s*(?:and|&)\s*technologies)?|technologies|frameworks|databases|data structures|concepts|لغات البرمجة|المهارات(?: التقنية)?|الأدوات|التقنيات|قواعد البيانات)$/iu;
+const categoryName = /^(?:programming languages?|languages?\s*\(programming\)|technical skills?|core technical competencies|technical competencies|core competencies|key skills|skills and abilities|skills|tools(?:\s*(?:and|&)\s*technologies)?|technologies|frameworks|databases|data structures|concepts|لغات البرمجة|المهارات(?: التقنية| والقدرات)?|الأدوات|التقنيات|قواعد البيانات)$/iu;
 const boundary = /^(?:summary|profile|objective|contact|awards|references|الملخص|الجوائز|معلومات الاتصال)\s*[:：]?$/iu;
 const categoryMarkers = () => /(^|[,،;؛]\s*)([\p{L}][\p{L}\p{N} /&()_-]{0,60}?)(?:\s*[:：]\s*|\s+[—–-]\s+)/gmu;
 const cleanBullet = value => value.replace(/^(?:[-*•▪]\s+|\d+[.)]\s+)/u, '').trim();
 const cellsOf = row => row.replace(/^\[[PD]\d+L\d+(?: y=\d+)?\]\s*/u, '')
-  .split(/\(x=\d+\)| \| /u).map(cell => cell.trim()).filter(Boolean);
+  .split(/\s+\|\s+(?=\(x=\d+\))/u)
+  .map(cell => cell.replace(/^\(x=\d+\)\s*/u, '').trim()).filter(Boolean);
 
 function labelled(value) {
   const first = [...value.matchAll(categoryMarkers())][0];
@@ -26,6 +27,27 @@ function wrappedContinuation(previous, next) {
     && !/^(?:[-*•▪]\s+|\d+[.)]\s+)/u.test(next);
 }
 
+function splitSkillNames(value) {
+  const chunks = [];
+  let current = '', depth = 0;
+  for (const character of value.replace(/\s+/gu, ' ')) {
+    if (character === '(') depth++;
+    if (/[,،;؛•▪|]/u.test(character) && depth === 0) {
+      if (current.trim()) chunks.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += character;
+    if (character === ')' && depth > 0) depth--;
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.flatMap(chunk => {
+    const list = chunk.match(/^(.+?)\s*\(([^()]*)\)$/u);
+    if (!list || !/[,،;؛]/u.test(list[2])) return [chunk];
+    return [list[1].trim(), ...list[2].split(/[,،;؛]/u).map(name => name.trim())].filter(Boolean);
+  });
+}
+
 function readLists(source, { sectionOnly }) {
   const entries = [], labels = [];
   const rows = source.split('\n');
@@ -35,7 +57,7 @@ function readLists(source, { sectionOnly }) {
       labels.push(label.trim());
       return separator;
     });
-    const names = value.split(/[,،;؛•▪|]/u).map(name => name.replace(/\s+/gu, ' ').trim()).filter(Boolean);
+    const names = splitSkillNames(value);
     // Reject a sentence/instruction-bearing list as a unit, not selected words.
     if (names.length < minimum || names.some(name =>
       /\b(?:developed|implemented|obtained|ignore|instructions)\b|^(?:use|used|using|built|designed|created)\s/iu.test(name))) return;

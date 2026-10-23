@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { findSourceExcerpt } from './evidence-match.mjs';
-import { analyzeLegacyGroqText as analyzeText, validateAnalysis } from './analysis.mjs';
+import { analyzeGroqText as analyzeText, validateAnalysis } from './analysis.mjs';
 import { providerResult } from './fixtures/provider-result.mjs';
 const empty = { skills: [], education: [], certificates: [], experiences: [], projects: [], activities: [] };
 test('punctuation and spacing differences preserve actual quotes without semantic guessing', () => {

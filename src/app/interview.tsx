@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CloudCard } from '../components/cloud-card';
+import { DisclosureCard } from '../components/disclosure-card';
 import { colors, ui } from '../constants/design';
 import { jobPaths, resolveBaseCareerId, type JobPath } from '../constants/job-paths';
 import { useInterview } from '../hooks/use-interview';
@@ -314,11 +315,10 @@ export default function InterviewScreen() {
       {interview.error ? <View style={styles.errorBox}><Text style={[styles.errorTitle, { textAlign }]}>{t.errorTitle}</Text><Text accessibilityRole="alert" style={[styles.errorText, { textAlign }]}>{interview.error}</Text><Pressable accessibilityRole="button" disabled={interview.busy} onPress={retry} style={ui.outline}><Text style={ui.outlineText}>{t.retry}</Text></Pressable></View> : null}
       {activeResult && <View><Text style={[ui.heading, { textAlign }]}>{language === 'ar' ? 'نتيجتك' : 'Your result'}</Text>{renderResult(activeResult)}</View>}
 
-      <View style={styles.sectionIntro}>
-        <Text style={[ui.heading, { textAlign }]}>{t.history}</Text>
+      <DisclosureCard title={t.history} subtitle={interview.history.length ? `${interview.history.length} ${language === 'ar' ? 'نتيجة محفوظة' : 'saved results'}` : language === 'ar' ? 'نتائجك السابقة' : 'Your previous results'} summary={interview.history.length ? (language === 'ar' ? 'اضغط لعرض إجاباتك وتقييماتها السابقة' : 'Open to review your earlier answers and feedback') : t.noHistory} status={interview.history.length ? `${interview.history.length}/100` : language === 'ar' ? 'فارغ' : 'Empty'}>
         <Text style={[ui.note, { textAlign }]}>{t.historyLimit}</Text>
-      </View>
-      {interview.loading ? <View style={ui.card}><View style={styles.skeletonWide} /><View style={styles.skeletonShort} /></View> : interview.history.length === 0 ? <View style={styles.emptyHistory}><Text style={[styles.emptyMark]}>—</Text><Text style={[ui.text, { textAlign }]}>{t.noHistory}</Text></View> : <View style={styles.historyList}>{interview.history.slice(0, 100).map(renderHistoryItem)}</View>}
+        {interview.loading ? <View style={ui.card}><View style={styles.skeletonWide} /><View style={styles.skeletonShort} /></View> : interview.history.length === 0 ? <View style={styles.emptyHistory}><Text style={[styles.emptyMark]}>—</Text><Text style={[ui.text, { textAlign }]}>{t.noHistory}</Text></View> : <View style={styles.historyList}>{interview.history.slice(0, 100).map(renderHistoryItem)}</View>}
+      </DisclosureCard>
       <CloudCard language={language} />
     </ScrollView>
   </SafeAreaView>;

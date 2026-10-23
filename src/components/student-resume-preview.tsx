@@ -2,14 +2,15 @@ import { Text, View } from 'react-native';
 import { ui } from '../constants/design';
 import type { PersonalProfile } from '../utils/personal-profile';
 import type { SkillProfile } from '../utils/skill-profile';
+import { studentResumeEducationLines } from '../utils/student-resume-education';
 
 export function StudentResumePreview({ personal, skills }: { personal: PersonalProfile; skills: SkillProfile }) {
   const cv = skills.cv;
+  const education = studentResumeEducationLines(personal, cv?.education ?? []);
   return <View style={ui.card}>
     <Text style={ui.heading}>معاينة الملف / السيرة الأولية</Text>
     <Text style={ui.title}>{personal.name || 'ملفي المهني'}</Text>
-    <Text style={ui.text}>{[personal.education, personal.major, personal.institution, personal.studyStatus, personal.studyDates].filter(Boolean).join(' · ')}</Text>
-    {(cv?.education ?? []).map((e, i) => <Text key={`e${i}`} style={ui.text}>{[e.name, e.major, e.organization, e.study_status, e.dates].filter(Boolean).join(' · ')}</Text>)}
+    {education.map((entry, i) => <Text key={`e${i}`} style={ui.text}>{entry}</Text>)}
     <Text style={ui.heading}>المهارات</Text>
     <Text style={ui.text}>{cv?.skills.map(s => s.name).join('، ') || 'لم تُضف مهارات نصية'}</Text>
     <Text style={ui.heading}>المشاريع</Text>

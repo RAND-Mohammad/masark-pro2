@@ -1,25 +1,26 @@
 import { normalizeSkillName } from '../src/utils/skill-matching.mjs';
-import { academicFact, combinedEducationFacts, isDescription, literalMajor, plausibleEducationField } from './resume-field-rules.mjs';
+import { academicFact, combinedEducationFacts, inferStudyStatus, isDescription, literalMajor, plausibleEducationField } from './resume-field-rules.mjs';
 import { CV_PARSER_VERSION } from '../src/utils/cv-parser-version.mjs';
 
 const headings = {
-  skills: /^(?:skills|technical skills|المهارات|المهارات التقنية)$/iu,
-  projects: /^(?:projects?|(?:personal|academic|graduation|capstone|final[- ]year)\s+projects?|المشاريع|مشاريع|المشروعات|المشاريع التقنية|المشاريع الأكاديمية|المشروعات الأكاديمية|مشروع التخرج|مشاريع التخرج)$/iu,
+  skills: /^(?:skills|technical skills|core competencies|core technical competencies|technical competencies|key skills|skills and abilities|skills\s*&\s*tools|tools\s*(?:and|&)\s*technologies|technologies\s*(?:and|&)\s*tools|skill set|technical skill set|المهارات|المهارات التقنية|المهارات والقدرات)$/iu,
+  projects: /^(?:projects?|selected projects?|project experience|labs?\s*(?:and|&)\s*projects?|projects?\s*(?:and|&)\s*labs?|academic\s*(?:and|&)\s*applied\s+projects?|(?:personal|academic|graduation|capstone|final[- ]year)\s+projects?|المشاريع|مشاريع|المشروعات|المشاريع التقنية|المشاريع الأكاديمية|المشروعات الأكاديمية|مشروع التخرج|مشاريع التخرج)$/iu,
   courses: /^(?:courses?|training courses|professional development|training|الدورات|الدورات التدريبية|الدورات المهنية|دورات)$/iu,
   certificates: /^(?:certificates?|certifications?|professional certifications?|الشهادات|الشهادات المهنية)$/iu,
-  unclassified: /^(?:courses?\s*(?:and|&|\/)\s*certifications?|courses?\s*(?:and|&|\/)\s*certificates?|certifications?\s*(?:and|&|\/)\s*courses?|الدورات\s*(?:و|\/)\s*الشهادات|الشهادات\s*(?:و|\/)\s*الدورات)$/iu,
+  unclassified: /^(?:courses?\s*(?:and|&|\/)\s*certifications?|courses?\s*(?:and|&|\/)\s*certificates?|certifications?\s*(?:and|&)\s*professional training|professional training\s*(?:and|&)\s*certifications?|certifications?\s*(?:and|&|\/)\s*courses?|الدورات\s*(?:و|\/)\s*الشهادات|الشهادات\s*(?:و|\/)\s*الدورات)$/iu,
   education: /^(?:education|educational background|education\s*(?:and|&|\/)\s*qualifications|academic background|academic qualifications|academics|التعليم|الدراسة|الخلفية الأكاديمية|التعليم الأكاديمي|المؤهلات|المؤهلات الأكاديمية|المؤهلات العلمية|التعليم\s*و\s*المؤهلات(?: العلمية)?|المؤهل العلمي)$/iu,
-  experiences: /^(?:experience|work experience|professional experience|employment history|internships?|الخبرة|الخبرات|الخبرات العملية|الخبرة العملية|خبرات العمل|الخبرات المهنية|التدريب العملي)$/iu,
+  experiences: /^(?:experience|work experience|professional experience|work history|career history|employment history|internship experience|internships?|training experience|work[- ]based training|on[- ]the[- ]job training|training placement|work placement|co[- ]?op training|practicum|الخبرة|الخبرات|الخبرات العملية|الخبرة العملية|خبرات العمل|الخبرات المهنية|التدريب|التدريب العملي|التدريب الميداني|التدريب التعاوني|التدريب الوظيفي)$/iu,
   activities: /^(?:activities|volunteering|volunteer|الأنشطة|التطوع)$/iu,
-  stop: /^(?:summary|professional summary|profile|objective|career objective|contact|contact information|personal information|references|awards|languages|نبذة|نبذة عني|الهدف|الهدف الوظيفي|الملخص|الملخص المهني|البيانات الشخصية|معلومات الاتصال|اللغات|الجوائز)$/iu,
+  stop: /^(?:summary|professional summary|profile|objective|career objective|contact|contact information|personal information|references|awards|languages|activities\s*(?:and|&)\s*languages?|نبذة|نبذة عني|الهدف|الهدف الوظيفي|الملخص|الملخص المهني|البيانات الشخصية|معلومات الاتصال|اللغات|الجوائز)$/iu,
 };
 const bilingualHeadings = Object.fromEntries(Object.entries(headings).map(([section, pattern]) =>
   [section, new RegExp(`^(?:${pattern.source.slice(1, -1)})\\s+(?:${pattern.source.slice(1, -1)})$`, 'iu')]));
 const fieldLabels = {
   name: /^(?:project(?: name| title)?|(?:graduation|capstone|final[- ]year) project|course(?: name)?|certification|certificate(?: name)?|degree|qualification|اسم المشروع|عنوان المشروع|مشروع التخرج|المشروع|اسم الدورة|الدورة|دورة|اسم الشهادة|الشهادة|شهادة|المؤهل|الدرجة العلمية)$/iu,
-  organization: /^(?:organization|organisation|institution|university|school|الجهة|المؤسسة|الجامعة|الجهة التعليمية)$/iu,
+  organization: /^(?:organization|organisation|institution|university|school|company|client|الجهة|الجهة المنفذة|المؤسسة|الشركة|الجامعة|الجهة التعليمية)$/iu,
   issuer: /^(?:issuer|provider|platform|issued by|الجهة المانحة|المنصة|مقدم الدورة|الجهة المقدمة)$/iu,
   dates: /^(?:dates?|period|year|graduation|graduation date|expected graduation|التاريخ|الفترة|تاريخ التخرج|التخرج المتوقع|تاريخ التخرج المتوقع)$/iu,
+  duration: /^(?:duration|length|مدة|المدة)$/iu,
   description: /^(?:description|details|الوصف|وصف المشروع|التفاصيل)$/iu,
   role: /^(?:role|my role|الدور|دوري)$/iu,
   technologies: /^(?:technologies|technology|tech stack|tools|التقنيات|التقنيات المستخدمة|الأدوات)$/iu,
@@ -27,10 +28,14 @@ const fieldLabels = {
   college: /^(?:college|faculty|الكلية|كلية)$/iu,
   major: /^(?:major|specialization|field of study|التخصص|تخصص)$/iu,
   study_status: /^(?:status|study status|حالة الدراسة|الحالة الدراسية|حالة التخرج)$/iu,
+  gpa: /^(?:gpa|cgpa|grade point average|المعدل(?: التراكمي)?|المعدل)$/iu,
 };
 const norm = value => value.normalize('NFKC').toLocaleLowerCase().replace(/\s+/gu, ' ').trim();
+const nonContentLine = /^(?:fictional test data\b|page\s+\d+(?:\s+of\s+\d+)?\b|cv\s+\d+\s+of\s+\d+\b|resume\s*[-|]\s*page\s+\d+\b)/iu;
 const splitList = value => value.split(/[,،;؛•▪]/u).map(s => s.trim()).filter(Boolean);
 const cleanBullet = value => value.replace(/^(?:[-*•▪]\s*|\d+[.)]\s*)/u, '').trim();
+const resumeMonth = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|يناير|فبراير|مارس|أبريل|ابريل|مايو|يونيو|يوليو|أغسطس|اغسطس|سبتمبر|أكتوبر|اكتوبر|نوفمبر|ديسمبر)';
+const resumeDatePoint = `(?:${resumeMonth}\\s+)?(?:19|20)\\d{2}`;
 export function isLiteralSkillName(name) {
   return typeof name === 'string' && name.length > 0 && name.length <= 60
     && !/\b(?:university|college|faculty|bachelor|master|degree|diploma|project|course|certificat(?:e|ion)|student|engineer|analyst|developer|intern)\b|جامعة|كلية|بكالوريوس|ماجستير|تخصص|مشروع|دورة|شهادة|مهندس|مهندسة|مطور|محلل|متدرب|خريج/iu.test(name)
@@ -118,12 +123,18 @@ export function extractLocalSections(source, basic, matchSkill) {
   function start(name, evidence, target = section, allowEmpty = false) {
     if ((!name && !allowEmpty) || name.length > 180 || output[target].length >= 80) { reset(); sectionStatus[section] = 'uncertain'; return; }
     current = target === 'courses' || target === 'certificates'
-      ? { name, issuer: '', date: '', evidence } : emptyEntry(name, evidence);
+      ? { name, issuer: '', date: '', ...(target === 'courses' ? { duration: '' } : {}), evidence, field_evidence: { name: evidence } }
+      : { ...emptyEntry(name, evidence), field_evidence: name ? { name: evidence } : {} };
     currentTarget = target;
     if (['education', 'projects'].includes(target)) current.field_evidence = name ? { name: evidence } : {};
     output[target].push(current);
   }
   function educationField(field, value, quote) {
+    if (field === 'study_status') {
+      if (/\b(?:graduated|completed|degree awarded)\b|متخرج(?:ة)?|تخرج(?:ت)?/iu.test(value)) value = 'متخرج';
+      else if (/expected|anticipated|على وشك التخرج|التخرج المتوقع/iu.test(value)) value = 'تخرج متوقع';
+      else if (/currently|in progress|ongoing|قيد الدراسة|ما زلت أدرس|ما زال يدرس|ما زالت تدرس/iu.test(value)) value = 'قيد الدراسة';
+    }
     if (['organization', 'college', 'major'].includes(field) && !plausibleEducationField(field, value.replace(/[.]$/u, ''))) {
       sectionStatus.education = 'uncertain'; return;
     }
@@ -149,7 +160,28 @@ export function extractLocalSections(source, basic, matchSkill) {
     contentSeen.add(section);
     if (section === 'skills' || section === 'experiences') return; // Existing literal parser handles these.
     const text = cleanBullet(value);
+    if (nonContentLine.test(text)) return;
     const tokens = fields(value);
+    if (section === 'education' && /^(?:gpa|cgpa|المعدل(?: التراكمي)?)\s*[:：]/iu.test(text)) {
+      const gpa = tokens.find(item => item.field === 'gpa' && item.value);
+      if (gpa) educationField('gpa', gpa.value, value);
+      return;
+    }
+    if (section === 'education' && /^(?:currently\s+(?:enrolled|studying|pursuing)|in\s+progress|ongoing|graduated(?:\s+(?:in\s+)?(?:19|20)\d{2})?|completed(?:\s+(?:in\s+)?(?:19|20)\d{2})?|قيد الدراسة|ما زلت أدرس|ما زال يدرس|ما زالت تدرس|متخرج(?:ة)?|تخرج(?:ت)?(?:\s+(?:في\s+)?[0-9٠-٩]{4})?|على وشك التخرج)$/iu.test(text)) {
+      educationField('study_status', text, value);
+      return;
+    }
+    if (section === 'education' && tokens.every(item => !item.field)) {
+      const institutionText = tokens.map(item => item.raw ?? '').find(part => /\b(?:university|college|faculty|institute|school)\b|جامعة|كلية|معهد/iu.test(part) && !/\b(?:gpa|cgpa)\b/iu.test(part)) ?? text;
+      const institutionParts = institutionText.split(/\s+[—–-]\s+/u);
+      if (institutionParts.length === 2) {
+        const facts = institutionParts.map(part => ({ field: academicFact(part), value: part }));
+        if (facts.every(fact => ['organization', 'college'].includes(fact.field))) {
+          for (const fact of facts) educationField(fact.field, fact.value, value);
+          return;
+        }
+      }
+    }
     if (section === 'education' && pendingEducationField && tokens.every(item => !item.field)) {
       const field = pendingEducationField; pendingEducationField = null;
       if (plausibleEducationField(field, text)) educationField(field, text, value);
@@ -161,7 +193,83 @@ export function extractLocalSections(source, basic, matchSkill) {
       && ['name', 'organization', 'college', 'major'].includes(tokens[0].field)) {
       pendingEducationField = tokens[0].field; return;
     }
+    if (section === 'projects' && currentTarget === 'projects' && current?.name && isDate(text)) {
+      setField('dates', text, value);
+      current.date_line_id = lineId;
+      return;
+    }
+    if (['courses', 'certificates'].includes(section) && currentTarget === section && current?.name && isDate(text)) {
+      setField('date', text, value);
+      current.date_line_id = lineId;
+      return;
+    }
+    if (section === 'courses' && currentTarget === 'courses' && current?.name
+      && /^\d+\s*(?:weeks?|months?|hours?|days?|أسبوع(?:ين|ان)?|أسابيع|شهر|أشهر|ساعة|ساعات|يوم|أيام)$/iu.test(text)) {
+      setField('duration', text, value);
+      return;
+    }
     const title = tokens.find(item => item.field === 'name');
+    const credentialLine = !title && ['courses', 'certificates'].includes(section) ? parseCredentialLine(text) : null;
+    if (credentialLine) {
+      const { name, issuer, date, duration } = credentialLine;
+      if (name.length <= 150 && issuer.length <= 120) {
+        const workplaceTraining = section === 'courses' && date
+          && /\b(?:intern(?:ship)?|trainee|apprentice|work placement|practicum|co[- ]?op placement|industrial training)\b|تدريب(?: ميداني| تعاوني| عملي)|متدرب(?:ة)?/iu.test(name);
+        if (workplaceTraining) {
+          const duplicate = output.experiences.some(item => norm([item.role, item.organization, item.dates].join('|'))
+            === norm([name, issuer, date].join('|')));
+          if (!duplicate && output.experiences.length < 80) {
+            output.experiences.push({ role: name, organization: issuer, dates: date, description: '', date_line_id: lineId,
+              evidence: value, field_evidence: { role: value, organization: value, dates: value } });
+          }
+          contentSeen.add('experiences');
+          reset();
+          return;
+        }
+        start(name, value, section);
+        if (current) {
+          if (issuer) setField('issuer', issuer.trim(), value);
+          if (date) { setField('date', date, value); current.date_line_id = lineId; }
+          if (duration && currentTarget === 'courses') setField('duration', duration, value);
+        }
+        return;
+      }
+    }
+    const projectTitleLine = section === 'projects'
+      ? text.match(/^(.+?)\s*\|\s*((?:19|20)\d{2}(?:\s*[-–]\s*(?:19|20)\d{2})?)$/u) : null;
+    if (!title && projectTitleLine && projectTitleLine[1].length <= 150) {
+      start(projectTitleLine[1].trim(), value, 'projects');
+      if (current) {
+        setField('dates', projectTitleLine[2], value);
+        current.date_line_id = lineId;
+      }
+      return;
+    }
+    if (section === 'projects' && currentTarget === 'projects' && current?.name
+      && tokens.every(item => !item.field)) {
+      const technologies = splitList(text);
+      if (technologies.length > 1 && technologies.every(name => isLiteralSkillName(name) && matchSkill(name))) {
+        setField('technologies', technologies, value);
+        collectSkills(text, value);
+        return;
+      }
+    }
+    const projectTechnologyLine = section === 'projects' && !title
+      ? text.match(/^(.+?)\s*\|\s*([^|]+)$/u) : null;
+    if (projectTechnologyLine) {
+      const [, projectName, technologyText] = projectTechnologyLine;
+      const technologies = splitList(technologyText);
+      if (projectName.length <= 150 && technologies.length
+        && technologies.every(name => isLiteralSkillName(name)
+          && (technologies.length > 1 || matchSkill(name) || /^[A-Z][A-Za-z0-9.+#/-]*$/u.test(name)))) {
+        start(projectName.trim(), value, 'projects');
+        if (current) {
+          setField('technologies', technologies, value);
+          collectSkills(technologyText, value);
+        }
+        return;
+      }
+    }
     const explicitCourse = title && /course|دورة|الدورة/iu.test(title.label);
     const explicitCert = title && /certificat|شهادة|الشهادة/iu.test(title.label);
     if (title) {
@@ -188,7 +296,14 @@ export function extractLocalSections(source, basic, matchSkill) {
         const combined = combinedEducationFacts(text);
         if (combined) {
           start('', value, 'education', true);
-          for (const fact of combined) educationField(fact.field, fact.value, value);
+          for (const fact of combined) {
+            if (fact.field === 'dates') {
+              if (currentTarget === 'education') {
+                setField('dates', fact.value, value);
+                current.date_line_id = lineId;
+              }
+            } else educationField(fact.field, fact.value, value);
+          }
           return;
         }
         const fact = academicFact(text);
@@ -201,7 +316,9 @@ export function extractLocalSections(source, basic, matchSkill) {
       const jobLike = /\b(?:at|engineer|developer|analyst)\b|لدى|مهندس|مطور|محلل/iu.test(text);
       if (['projects', 'courses', 'certificates', 'unclassified', 'activities'].includes(section)
         && text.length <= 150 && !/[.!?؟]$/u.test(text) && !jobLike
-        && (numbered || (text.split(/\s+/u).length >= 2 && !isDate(text)) || (section === 'certificates' && /\+|certified|شهادة/iu.test(text)))) {
+        && (numbered || (text.split(/\s+/u).length >= 2 && !isDate(text))
+          || (section === 'projects' && text.length >= 3 && !/[.!?؟]$/u.test(text) && !isDate(text))
+          || (section === 'certificates' && /\+|certified|شهادة/iu.test(text)))) {
         const target = section === 'certificates' && /^شهادة مهنية[،,\s]/u.test(text) ? 'unclassified'
           : section === 'certificates' && /course completion|completion of .+ course|إتمام دورة|إتمام الدورة|اجتياز دورة/iu.test(text) ? 'courses' : section;
         start(text, value, target);
@@ -230,7 +347,7 @@ export function extractLocalSections(source, basic, matchSkill) {
       if (currentTarget === 'courses' || currentTarget === 'certificates') {
         if (field === 'organization') field = 'issuer';
         if (field === 'dates') field = 'date';
-        if (!['issuer', 'date'].includes(field)) continue;
+        if (!['issuer', 'date'].includes(field) && !(currentTarget === 'courses' && field === 'duration')) continue;
       }
       if (field === 'technologies') {
         if (currentTarget !== 'projects') continue;
@@ -238,9 +355,10 @@ export function extractLocalSections(source, basic, matchSkill) {
         current.field_evidence.technologies = value;
         collectSkills(token.value, value);
       } else {
-        const allowed = currentTarget === 'education' ? ['organization', 'dates', 'description', 'college', 'major', 'study_status']
+        const allowed = currentTarget === 'education' ? ['organization', 'dates', 'description', 'college', 'major', 'study_status', 'gpa']
           : currentTarget === 'projects' ? ['organization', 'dates', 'description', 'role', 'category']
-            : currentTarget === 'courses' || currentTarget === 'certificates' ? ['issuer', 'date'] : ['organization', 'dates', 'description'];
+          : currentTarget === 'courses' ? ['issuer', 'date', 'duration']
+            : currentTarget === 'certificates' ? ['issuer', 'date'] : ['organization', 'dates', 'duration', 'description'];
         if (allowed.includes(field)) {
           if (currentTarget === 'education' && ['organization', 'college', 'major'].includes(field)
             && !plausibleEducationField(field, token.value.replace(/[.]$/u, ''))) {
@@ -254,7 +372,7 @@ export function extractLocalSections(source, basic, matchSkill) {
       if (currentTarget === 'education' && field === 'dates' && !current.study_status
         && /expected graduation|(?:تاريخ )?التخرج المتوقع/iu.test(token.label)) {
         const marker = value.match(/expected\s+graduation|(?:تاريخ\s+)?التخرج\s+المتوقع/iu)?.[0];
-        if (marker) setField('study_status', marker, value);
+        if (marker) setField('study_status', value.trim(), value);
       }
     }
   }
@@ -287,12 +405,24 @@ export function extractLocalSections(source, basic, matchSkill) {
       continue;
     }
     if (cells.length !== 1) {
+      if (section && ['education', 'projects'].includes(section)) {
+        for (const cell of cells) process(cell, lineId);
+        continue;
+      }
       if (section) sectionStatus[section] = 'uncertain';
       skippedColumns = true; blocked = true; reset(); continue;
     }
     process(cells[0], lineId);
   }
   output.projects = output.projects.map(inferProject);
+  for (const entry of output.education) {
+    if (!entry.study_status) {
+      const status = inferStudyStatus(entry.field_evidence?.dates ?? entry.evidence, entry.dates);
+      if (!status) continue;
+      entry.study_status = status;
+      entry.field_evidence.study_status = entry.field_evidence.dates ?? entry.evidence;
+    }
+  }
   for (const target of ['education', 'projects']) for (const entry of output[target]) {
     entry.needs_review = ['name', ...(target === 'education' ? ['organization', 'major'] : [])].filter(field => !entry[field]);
     if (entry.needs_review.length) sectionStatus[target] = 'uncertain';
@@ -330,4 +460,31 @@ export function extractLocalSections(source, basic, matchSkill) {
   return { ...output, parser_version: CV_PARSER_VERSION, analyzed_at: new Date().toISOString(), section_status: sectionStatus,
     warnings: ['تحليل محلي محدود بقواعد وأقسام وليس فهم ذكاء اصطناعي كاملًا. استخرجنا فقط معلومات صريحة بأدلتها؛ لم نخمن الجهات أو التواريخ أو المعلومات الناقصة. الأقسام غير المستخرجة لا تثبت عدم امتلاكها. تصنيف المشروع المستنتج من التقنيات مميّز عن النص الأصلي.', ...warnings] };
 }
-function isDate(value) { return /^(?:[0-9٠-٩]{4})(?:\s*[-–]\s*[0-9٠-٩]{4})?$/u.test(value); }
+function parseCredentialLine(text) {
+  let remainder = text.trim(), date = '', duration = '';
+  const durationMatch = remainder.match(/\b\d+\s*(?:weeks?|months?|hours?|days?|أسبوع(?:ين|ان)?|أسابيع|شهر|أشهر|ساعة|ساعات|يوم|أيام)(?:\s*(?:\/|,|and|و)\s*\d+\s*(?:weeks?|months?|hours?|days?|أسبوع(?:ين|ان)?|أسابيع|شهر|أشهر|ساعة|ساعات|يوم|أيام))?/iu);
+  if (durationMatch) {
+    duration = durationMatch[0];
+    remainder = remainder.replace(durationMatch[0], '').replace(/[|,،;؛—–-]\s*$/u, '').trim();
+  }
+  const datePattern = new RegExp('(?:\\s*\\(\\s*|\\s*[,|]\\s*)(' + resumeDatePoint
+    + '(?:\\s*[-–—]\\s*' + resumeDatePoint + ')?)\\s*\\)?$', 'iu');
+  const dateMatch = remainder.match(datePattern);
+  if (dateMatch) {
+    date = dateMatch[1].trim();
+    remainder = remainder.slice(0, dateMatch.index).replace(/\s*[,|;(—–-]\s*$/u, '').trim();
+  }
+  const split = remainder.match(/^(.+?)\s+(?:[—–-]|\|)\s+(.+)$/u)
+    ?? remainder.match(/^(.+?)\s+by\s+(.+)$/iu)
+    ?? remainder.match(/^([^,،;؛]{2,150})\s*[,،;؛]\s*(.{2,120})$/u);
+  if (!split) return null;
+  const name = split[1].trim(), issuer = split[2].trim();
+  if (!name || !issuer || name.length > 150 || issuer.length > 120 || isDate(name)) return null;
+  return { name, issuer, date, duration };
+}
+
+function isDate(value) {
+  return /^(?:[0-9٠-٩]{4})(?:\s*[-–]\s*[0-9٠-٩]{4})?$/u.test(value)
+    || new RegExp('^' + resumeDatePoint + '$', 'iu').test(value.trim())
+    || new RegExp(`^${resumeDatePoint}\\s*(?:[-–—]|\\bto\\b|\\buntil\\b)\\s*(?:${resumeDatePoint}|present|current|now)$`, 'iu').test(value.trim());
+}

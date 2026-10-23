@@ -23,6 +23,7 @@ import { calculateCareerReadiness } from '../utils/career-readiness';
 import { readinessLabels, readinessLevel } from '../utils/skill-gap';
 import { certificationPlanId, experiencePlanId, projectPlanId } from '../utils/learning-plan';
 import { getLearningResources } from '../constants/learning-resources';
+import { DisclosureCard } from '../components/disclosure-card';
 
 export default function RoadmapScreen() {
     const router = useRouter();
@@ -58,16 +59,14 @@ export default function RoadmapScreen() {
         const skill = dataset.skills.find(entry => entry.skill_id === item.skill_id);
         const progress = progressForSkill(item.skill_id);
         const priority = 'priority_rank' in item ? item.priority_rank : index + 1;
-        return <View key={item.skill_id} style={styles.card}>
-            <Text style={styles.heading}>مهارة {priority}</Text>
-            <Text style={styles.skill}>{displaySkillName(item.name)}</Text>
+        return <DisclosureCard key={item.skill_id} title={displaySkillName(item.name)} subtitle={`مهارة ${priority} · أولوية ${priority}`} summary={`${progress >= 60 ? 'قيد التطبيق' : 'مبتدئ'} · ${progress}%`} status={`${progress}%`} statusTone={progress === 100 ? 'success' : 'neutral'}>
             <Text style={styles.progressLabel}>{progress >= 60 ? 'قيد التطبيق' : 'مبتدئ'} · {progress}% · أولوية {priority}</Text>
             <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${progress}%` }]} /></View>
             <Text style={styles.english}>{skill?.description ?? 'الوصف غير متوفر'}</Text>
             {getLearningSteps(item.name).map((step, stepIndex) => <Text key={stepIndex} style={styles.text}>{stepIndex + 1}. {step}</Text>)}
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: !learning.ready || learning.busy }} disabled={!learning.ready || learning.busy} style={styles.action} onPress={() => void learning.change(item.skill_id, !learning.plan.includes(item.skill_id))}><Text style={styles.actionText}>{!learning.ready ? 'جارٍ تحميل الخطة…' : learning.plan.includes(item.skill_id) ? '✓ في خطتي — إزالة' : '＋ أضف المهارة إلى خطتي'}</Text></Pressable>
             <Text style={styles.note}>ترتفع إلى 100% هنا عندما توثّقين المهارة في ملفك بعد التطبيق، وليس بمجرد فتح المورد.</Text>
-        </View>;
+        </DisclosureCard>;
     };
 
     return (

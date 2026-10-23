@@ -6,6 +6,7 @@ import { professionalCertifications } from '../constants/professional-certificat
 import { colors, ui } from '../constants/design';
 import { useSkillProfile } from '../hooks/use-skill-profile';
 import { jobPathForTitle } from '../constants/job-paths';
+import { DisclosureCard } from '../components/disclosure-card';
 
 function BulletList({ items }: { items: string[] }) {
   return <View style={{ gap: 7 }}>{items.map(item => <Text key={item} style={ui.text}>• {item}</Text>)}</View>;
@@ -28,11 +29,13 @@ export default function MajorsScreen() {
       {ready && <><Text style={ui.text}>{stageText}</Text><Text style={ui.note}>اعتمدنا على {skillCount} مهارة معتمدة، {projectCount} مشروع، و{experienceCount} خبرة في سيرتك. هذا توجيه تعليمي وليس حكم توظيف.</Text>
       {stage !== 'experienced' && <Pressable accessibilityRole="button" style={ui.button} onPress={() => router.push('/learning-plan')}><Text style={ui.buttonText}>فتح خطة التعلم المناسبة لي</Text></Pressable>}</>}
     </View>
-    <View style={ui.card}><Text style={ui.heading}>معنى العلامات</Text><Text style={ui.text}>● مناسب للبداية: يمكن استهدافه بعد الأساسيات ومشاريع جيدة.</Text><Text style={ui.text}>◆ يحتاج أساسًا أو خبرة أقوى: غالبًا يتطلب نطاق مهارات أوسع أو خبرة عملية، وقد توجد وظائف Junior منه.</Text></View>
-    {academicPrograms.map(program => {
+    <DisclosureCard title="معنى العلامات" subtitle="كيف أقرأ اقتراحات الوظائف؟" summary="● مناسب للبداية · ◆ يحتاج أساسًا أو خبرة أقوى">
+      <Text style={ui.text}>● مناسب للبداية: يمكن استهدافه بعد الأساسيات ومشاريع جيدة.</Text><Text style={ui.text}>◆ يحتاج أساسًا أو خبرة أقوى: غالبًا يتطلب نطاق مهارات أوسع أو خبرة عملية، وقد توجد وظائف Junior منه.</Text>
+    </DisclosureCard>
+    {academicPrograms.map((program, index) => {
       const certifications = program.recommendedCertificationIds.map(id => professionalCertifications.find(item => item.id === id)).filter((item): item is NonNullable<typeof item> => !!item);
-      return <View key={program.id} style={ui.card}>
-        <Text style={ui.eyebrow}>{program.englishTitle}</Text><Text style={ui.heading}>{program.title}</Text><Text style={styles.degree}>{program.degree}</Text><Text style={ui.text}>{program.summary}</Text>
+      return <DisclosureCard key={program.id} title={program.title} subtitle={program.degree} summary={program.summary} status={`${program.commonTitles.length} مسميات`} statusTone="success" defaultExpanded={index === 0}>
+        <Text style={ui.eyebrow}>{program.englishTitle}</Text>
         <Text style={styles.section}>Common Job Titles</Text>
         <View style={styles.jobs}>{program.commonTitles.map(job => { const path = jobPathForTitle(job.title); return <Pressable accessibilityRole="button" key={job.title} style={[styles.job, job.stage === 'experienced' && styles.jobExperienced]} onPress={() => path && router.push(`/career?id=${path.id}`)}><Text style={styles.jobTitle}>{job.stage === 'entry' ? '●' : '◆'} {job.title}</Text><Text style={ui.note}>{job.stage === 'entry' ? 'مناسب للبداية — افتح الجاهزية' : 'يحتاج أساسًا أو خبرة أقوى — افتح الجاهزية'}</Text></Pressable>; })}</View>
         <Text style={styles.section}>المهارات الأساسية</Text><BulletList items={program.academicSkills} />
@@ -40,7 +43,7 @@ export default function MajorsScreen() {
         <Text style={styles.section}>شهادات احترافية اختيارية</Text>
         {certifications.map(certificate => <View key={certificate.id} style={styles.certificate}><Text style={styles.certificateTitle}>{certificate.title}</Text><Text style={ui.text}>{certificate.provider} · {certificate.level}</Text><Text style={styles.cost}>{certificate.cost}</Text><Text style={ui.note}>{certificate.note}</Text><Pressable accessibilityRole="link" onPress={() => void Linking.openURL(certificate.url)}><Text style={ui.link}>فتح الصفحة الرسمية</Text></Pressable></View>)}
         <Text style={styles.section}>المراجع</Text>{program.sources.map(source => <Pressable key={source.url} accessibilityRole="link" onPress={() => void Linking.openURL(source.url)}><Text style={ui.link}>{source.label}</Text></Pressable>)}
-      </View>;
+      </DisclosureCard>;
     })}
   </ScrollView></SafeAreaView>;
 }

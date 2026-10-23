@@ -1,5 +1,6 @@
 import { findSourceExcerpt } from './evidence-match.mjs';
 import { plainLayoutText } from './layout-reader.mjs';
+import { isStudyStatusSupported } from './resume-field-rules.mjs';
 
 // Page locations come from the PDF reader, never from model assertions.
 function pagesForQuote(source, quote, record) {
@@ -27,10 +28,10 @@ export function verifyFieldProvenance(analysis, source) {
   const visible = plainLayoutText(source);
   const fields = {
     skills: ['name'],
-    education: ['name', 'organization', 'college', 'major', 'study_status', 'dates', 'description'],
-    projects: ['name', 'organization', 'role', 'technologies', 'dates', 'description'],
+    education: ['name', 'organization', 'college', 'major', 'study_status', 'gpa', 'dates', 'description'],
+    projects: ['name', 'organization', 'role', 'technologies', 'dates', 'duration', 'description'],
     experiences: ['role', 'organization', 'location', 'dates', 'description'],
-    courses: ['name', 'issuer', 'date'],
+    courses: ['name', 'issuer', 'date', 'duration'],
     certificates: ['name', 'issuer', 'date'],
     activities: ['name', 'organization', 'dates', 'description'],
     unclassified: ['name', 'organization', 'dates', 'description'],
@@ -45,7 +46,10 @@ export function verifyFieldProvenance(analysis, source) {
         if (!values.some(value => typeof value === 'string' && value.trim())) continue;
         const proposed = item.field_evidence[field] ?? record;
         const literal = findSourceExcerpt(visible, proposed);
-        if (!literal || !values.every(value => findSourceExcerpt(literal, value))) {
+        const derivedStudyStatus = section === 'education' && field === 'study_status'
+          && values.length === 1
+          && isStudyStatusSupported(values[0], proposed, item.dates);
+        if ((!literal || !values.every(value => findSourceExcerpt(literal, value))) && !derivedStudyStatus) {
           item[field] = Array.isArray(item[field]) ? [] : '';
           if (section === 'skills' && field === 'name') item.mapped_skill_id = null;
           delete item.field_evidence[field];
@@ -53,7 +57,7 @@ export function verifyFieldProvenance(analysis, source) {
           continue;
         }
         // Retain a literal field quote; arrays use their associated source passage.
-        const quote = values.length === 1 ? findSourceExcerpt(literal, values[0]) : literal;
+        const quote = derivedStudyStatus ? proposed : values.length === 1 ? findSourceExcerpt(literal, values[0]) : literal;
         item.field_evidence[field] = quote;
         const located = pagesForQuote(source, quote, record);
         if (located.length) pages[field] = located;
@@ -72,8 +76,11 @@ export function associatedRecordQuote(section, item, scopedSource, localRecords)
   const label = section === 'experiences' ? item.role : item.name;
   let quote = findSourceExcerpt(visible, item.evidence);
   const records = localRecords[section] ?? [];
-  const matches = records.filter(row => (section === 'experiences' ? row.role : row.name) === label);
-  if (section === 'education' && matches.length === 1) {
+  const matches = records.filter(row => {
+    const localLabel = section === 'experiences' ? row.role : row.name;
+    return localLabel === label || (section !== 'experiences' && localLabel && findSourceExcerpt(row.evidence, label));
+  });
+  if (['education', 'projects', 'courses', 'certificates', 'experiences'].includes(section) && matches.length === 1) {
     const localQuote = findSourceExcerpt(visible, matches[0].evidence);
     if (localQuote && findSourceExcerpt(localQuote, label)) quote = localQuote;
   }

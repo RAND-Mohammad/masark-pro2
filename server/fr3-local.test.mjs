@@ -51,6 +51,26 @@ test('section boundaries and actual record titles prevent college, major, course
   assert.equal(result.education.length, 1);
 });
 
+test('recovers a university and dates from a degree row joined with an em dash and a pipe', () => {
+  const line = 'Bachelor of Business Information Systems — Lakeview State University | 2022–2026';
+  const source = `EDUCATION\n[P1L2 y=100] (x=51) ${line}\nEXPERIENCE`;
+  const localEducation = local(source).education[0];
+  assert.equal(localEducation.name, 'Bachelor of Business Information Systems');
+  assert.equal(localEducation.organization, 'Lakeview State University');
+  assert.equal(localEducation.dates, '2022–2026');
+
+  // Simulate the model returning only the degree label. The deterministic
+  // evidence pass must supplement the same education record, not guess.
+  const validated = validateAnalysis({
+    skills: [], certificates: [], courses: [], experiences: [],
+    education: [{ name: localEducation.name, organization: '', college: '', major: '', study_status: '', dates: '2022–2026', date_line_id: 'P1L2', description: '', evidence: localEducation.name }],
+    projects: [], activities: [], unclassified: [],
+  }, source);
+  assert.equal(validated.education[0].organization, 'Lakeview State University');
+  assert.equal(validated.education[0].dates, '2022–2026');
+  assert.equal(validated.education[0].field_evidence.organization, 'Lakeview State University');
+});
+
 test('duplicates are unique, combined qualifications need review and missing sections are not proof of absence', async () => {
   const lines = [
     ...resumeLines.en, 'Skills: Python, Python',

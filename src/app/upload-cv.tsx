@@ -7,8 +7,6 @@ import { CV_MIME_TYPES, formatCvSize } from '../utils/cv-file';
 import { getValidatedCvFile } from '../utils/cv-upload-file';
 import { analyzeCv } from '../utils/cv-api';
 import { readSkillProfile, saveReviewedCv, clearReviewedCv, type CvProfile } from '../utils/skill-profile';
-import dataset from '../masarak_dataset.json';
-import { careerTitles } from '../utils/career-matches';
 import { captureDataScope } from '../utils/scoped-storage';
 import { loadSavedCv, storeCvFile, storeCvReview, deleteSavedCv } from '../utils/saved-cv';
 import { approvedCvAnalysis, createCvReview, cvReviewCounts, normalizeCvReview } from '../utils/cv-review';
@@ -17,13 +15,14 @@ import type { CvSection, ReviewSection } from '../utils/cv-review';
 import CvReviewSections from '../components/cv/CvReviewSections';
 import { needsCvReanalysis } from '../utils/cv-parser-version.mjs';
 import { createReanalysisReview, restoreCvReview } from '../utils/cv-reanalysis';
+import { DisclosureCard } from '../components/disclosure-card';
 
-function skillScoreNote(id: string | null) {
-  if (!id) return 'لم نجد ربطًا موثوقًا لهذا الاسم؛ تُحفظ المهارة للمراجعة ولا نحتسبها بالتخمين.';
-  const core = dataset.career_skills.filter(row => row.skill_id === id && row.priority === 'core').map(row => careerTitles[row.career_id] ?? row.career_id);
-  if (core.length) return 'تدخل تغطية المتطلبات الأساسية لمسار: ' + core.join('، ') + '. تُحتسب الكفاءة مرة واحدة مهما تكررت أدواتها.';
-  if (dataset.career_skills.some(row => row.skill_id === id)) return 'مهارة مساندة مرتبطة بمسارات؛ تظهر في ملفك والخطة، ولا تغير نسبة المتطلبات الأساسية.';
-  return 'مهارة معروفة في القاموس ومحفوظة، لكنها ليست ضمن متطلبات المسارات الستة الحالية.';
+function compactAnalysisWarning(warning: string) {
+  if (warning.includes('استُبعدت معلومات')) return 'استُبعدت معلومات بلا دليل واضح في السيرة. راجعي النتائج.';
+  if (warning.includes('ربط بعض التواريخ')) return 'تُركت بعض التواريخ فارغة لعدم وضوح ارتباطها. راجعيها.';
+  if (warning.includes('إشارات لمشاريع أو أنشطة')) return 'تعذّر التحقق من بعض المشاريع أو الأنشطة. راجعي القسمين حتى لو ظهرا فارغين.';
+  if (warning.includes('احتُفظ بالبنود المصححة')) return 'احتفظنا بتعديلاتك واستبعاداتك السابقة. قد يظهر بند مكرر؛ راجعيه قبل الاعتماد.';
+  return warning;
 }
 
 const sectionNames: Record<CvSection, string> = {
@@ -180,10 +179,9 @@ export default function UploadCvScreen() {
             <View style={styles.fileIcon}><Text style={styles.fileIconText}>PDF</Text></View>
             <View style={styles.cardHeaderCopy}>
               <Text style={styles.heading}>{file ? 'ملف السيرة المحفوظ' : 'ابدأ بملف السيرة'}</Text>
-              <Text style={styles.note}>PDF فقط · حتى 10 ميجابايت</Text>
+              <Text style={styles.note}>PDF نصي بالإنجليزية · حتى 10 ميجابايت</Text>
             </View>
           </View>
-          <Text style={styles.text}>PDF نصي باللغة الإنجليزية فقط · حتى 10 ميجابايت</Text>
           <Pressable style={[styles.button, busy && styles.disabled]} accessibilityRole="button" disabled={busy || !ready} onPress={() => void pickCv()}>
             <Text style={styles.buttonText}>{file ? 'اختيار ملف آخر' : 'اختيار السيرة من الملفات'}</Text>
           </Pressable>
@@ -191,11 +189,10 @@ export default function UploadCvScreen() {
             <View style={styles.fileMeta}><Text style={styles.fileName}>{file.name}</Text><Text style={styles.fileSize}>{formatCvSize(file.size)}</Text></View>
             <View style={styles.notice}>
               <Text style={styles.noticeTitle}>قبل التحليل</Text>
-              <Text style={styles.note}>يُرسل الملف إلى Gemini بعد موافقتك. ملفات الصور وOCR غير مدعومة.</Text>
-              <Text style={styles.note}>للاختبار، استخدم سيرة تجريبية؛ قد تستخدم Google بيانات الخطة المجانية لتحسين خدماتها.</Text>
+              <Text style={styles.note}>بعد موافقتك، نرسل النص المستخرج إلى Groq. ملفات PDF المصوّرة غير مدعومة.</Text>
             </View>
-            {selection('أوافق على إرسال السيرة إلى Google Gemini.', consent, () => setConsent(!consent))}
-            <Pressable disabled={busy} onPress={() => void Linking.openURL('https://ai.google.dev/gemini-api/docs/pricing').catch(() => setError('تعذر فتح تفاصيل خطة Google.'))}>
+            {selection('أوافق على إرسال نص السيرة إلى Groq.', consent, () => setConsent(!consent))}
+            <Pressable disabled={busy} onPress={() => void Linking.openURL('https://console.groq.com/docs/your-data').catch(() => setError('تعذر فتح معلومات بيانات Groq.'))}>
               <Text style={styles.link}>تفاصيل استخدام البيانات</Text>
             </Pressable>
             <Pressable style={[styles.button, styles.secondaryButton, (!consent || busy) && styles.disabled]} accessibilityRole="button" disabled={!consent || busy} onPress={() => {
@@ -205,8 +202,7 @@ export default function UploadCvScreen() {
               <Text style={styles.secondaryButtonText}>{analysis || savedCv ? 'إعادة التحليل' : 'تحليل السيرة الذاتية'}</Text>
             </Pressable>
             {confirmReanalysis ? <View style={styles.confirmBox}>
-              <Text style={styles.text}>ستُنشأ مراجعة جديدة مع الاحتفاظ ببنودك المصححة والمضافة يدويًا واستبعاداتك. تُحفظ نسخة سابقة للعرض والاستعادة؛ لا تتغير معلوماتك المعتمدة حتى تعتمد النتيجة الجديدة.</Text>
-              <Text style={styles.note}>التعديلات القديمة التي لا تحمل علامة تصحيح لا يمكن تمييزها آليًا؛ تبقى في النسخة السابقة للعرض والاستعادة. راجع النسختين قبل الاعتماد.</Text>
+              <Text style={styles.text}>سننشئ مراجعة جديدة. معلوماتك المعتمدة لا تتغير حتى تعتمديها؛ راجعي النسخة السابقة لأي تعديل لم يظهر.</Text>
               <Pressable accessibilityRole="button" disabled={busy || !consent} onPress={() => void runAnalysis()}><Text style={styles.link}>إعادة التحليل مع الحفاظ على تعديلاتي</Text></Pressable>
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => setConfirmReanalysis(false)}><Text style={styles.link}>إلغاء إعادة التحليل</Text></Pressable>
             </View> : null}
@@ -226,19 +222,21 @@ export default function UploadCvScreen() {
 
         {review && analysis ? <>
           <View style={styles.reviewIntro}>
-            <Text style={styles.eyebrow}>مراجعة تفصيلية</Text>
-            <Text style={styles.heading}>المعلومة لك، والقرار لك</Text>
-            <Text style={styles.text}>الأعداد أدناه تتغير مع اعتمادك، وتحتسب العناصر الفريدة فقط. استبعد غير الصحيح، أو انقله إلى قسمه المناسب.</Text>
-            <Text style={styles.note}>لا نحتسب البند نفسه مرتين بين الدورات والشهادات. البنود غير المصنفة لا تدخل الأعداد حتى تحدد قسمها.</Text>
+            <Text style={styles.eyebrow}>مراجعة السيرة</Text>
+            <Text style={styles.heading}>تحققي من البيانات</Text>
+            <Text style={styles.note}>استبعدي غير الصحيح وصنّفي غير المحدد؛ يُحتسب البند مرة واحدة بين الدورات والشهادات.</Text>
           </View>
-          {analysis.warnings.map((warning, index) => <View key={`${warning}-${index}`} style={styles.warning}><Text style={styles.note}>{warning}</Text></View>)}
+          {analysis.warnings.length ? <View style={styles.warning}>
+            <Text style={styles.noticeTitle}>ملاحظات التحليل</Text>
+            {analysis.warnings.map((warning, index) => <Text key={`${warning}-${index}`} style={styles.note}>• {compactAnalysisWarning(warning)}</Text>)}
+          </View> : null}
           {review.previous_review || review.previous_approved ? <View style={styles.notice}>
             <Text style={styles.noticeTitle}>نسختك السابقة محفوظة</Text>
             {review.previous_review ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => setHistory('draft')}><Text style={styles.link}>عرض المراجعة السابقة</Text></Pressable> : null}
             {review.previous_approved ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => setHistory('approved')}><Text style={styles.link}>عرض آخر اعتماد سابق</Text></Pressable> : null}
             {previousReview && history ? <>
-              <Text style={styles.note}>نسخة سابقة للقراءة فقط، وليست نتيجة استخراج جديدة.</Text>
-              <CvReviewSections review={previousReview} onChange={() => {}} busy analyzedAt={previousReview.analysis.analyzed_at} onSkillNote={skillScoreNote} />
+              <Text style={styles.note}>نسخة سابقة · للعرض والاستعادة</Text>
+              <CvReviewSections review={previousReview} onChange={() => {}} busy />
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => { setReview(restoreCvReview(review, history)); setHistory(null); }}><Text style={styles.link}>استعادة هذه المراجعة</Text></Pressable>
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => setHistory(null)}><Text style={styles.link}>إخفاء النسخة السابقة</Text></Pressable>
             </> : null}
@@ -251,9 +249,9 @@ export default function UploadCvScreen() {
               </View>
             ))}
           </View>
-          <CvReviewSections review={review} onChange={setReview} busy={busy} analyzedAt={analysis.analyzed_at} onSkillNote={skillScoreNote} />
+          <CvReviewSections review={review} onChange={setReview} busy={busy} />
           <View style={styles.approvalNote}>
-            <Text style={styles.note}>المهارات المعتمدة المرتبطة بالقاموس تُضاف إلى اختياراتك السابقة. الدورات والشهادات والتعليم والخبرات والمشاريع تُحفظ في ملف السيرة ولا تدخل نسبة تغطية المهارات.</Text>
+            <Text style={styles.note}>تدخل المهارات الأساسية في نسبة التغطية؛ بقية البيانات تُحفظ في ملف السيرة.</Text>
           </View>
           <Pressable accessibilityRole="button" style={[styles.button, styles.approveButton, busy && styles.disabled]} disabled={busy} onPress={() => void approve()}>
             <Text style={styles.buttonText}>اعتماد المعلومات وحفظها</Text>
@@ -278,14 +276,20 @@ export default function UploadCvScreen() {
             const rows = savedCv[section] ?? [];
             const state = savedCv.section_status?.[section] ?? 'legacy';
             const stateText = state === 'not_found' ? 'لم يظهر نص واضح؛ وهذا لا يعني عدم وجود معلومات.' : state === 'uncertain' ? 'وجد نص يحتاج إلى مراجعة أو تصنيف.' : state === 'legacy' ? 'نتيجة أقدم قد تحتاج إلى إعادة التحليل.' : 'معلومات مستخرجة ومعتمدة.';
-            return <View key={section} style={styles.savedSection}>
-              <View style={styles.savedSectionHeading}><Text style={styles.heading}>{sectionNames[section]}</Text><Text style={styles.savedCount}>{savedCounts?.[section] ?? 0}</Text></View>
+            const first = rows[0] as unknown as Record<string, unknown> | undefined;
+            const firstSummary = first ? [first.role ?? first.name, first.organization, first.major, first.dates, first.description,
+              Array.isArray(first.technologies) ? first.technologies.join('، ') : '']
+              .filter((item): item is string => typeof item === 'string' && item.trim().length > 0).join(' · ') : '';
+            const sectionState = state === 'not_found' ? 'لا بيانات' : state === 'uncertain' || state === 'legacy' ? 'تحتاج مراجعة' : 'معتمدة';
+            return <DisclosureCard key={section} title={sectionNames[section]} subtitle={stateText}
+              summary={firstSummary || (rows.length ? `${rows.length} عناصر محفوظة` : 'لا توجد عناصر في هذا القسم')}
+              status={sectionState}>
               <Text style={styles.note}>{stateText}</Text>
               {rows.length ? rows.map((row, index) => <Text key={`${section}-${index}`} style={styles.savedEntry}>{[
                 ...Object.entries(row).filter(([key, value]) => key !== 'evidence' && key !== 'mapped_skill_id' && value && typeof value === 'string').map(([, value]) => value as string),
                 ...(Array.isArray((row as unknown as { technologies?: string[] }).technologies) ? [(row as unknown as { technologies: string[] }).technologies.join('، ')] : []),
-              ].filter(Boolean).join(' · ')}{row.evidence ? `\nالدليل: ${row.evidence}` : ''}</Text>) : <Text style={styles.note}>لا توجد معلومة معتمدة هنا. قد لا تكون استُخرجت من هذا الملف.</Text>}
-            </View>;
+              ].filter(Boolean).join(' · ')}</Text>) : <Text style={styles.note}>لا توجد معلومة معتمدة هنا. قد لا تكون استُخرجت من هذا الملف.</Text>}
+            </DisclosureCard>;
           })}
         </View> : null}
       </ScrollView>
@@ -337,7 +341,7 @@ const styles = StyleSheet.create({
   errorBox: { backgroundColor: '#FFF1ED', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#F0D8CF' },
   error: { color: '#A13F35', fontSize: 14, lineHeight: 23, textAlign: 'right' },
   reviewIntro: { gap: 7, paddingTop: 4 },
-  warning: { backgroundColor: '#FBF4E8', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E9D8B9' },
+  warning: { backgroundColor: '#FBF4E8', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E9D8B9', gap: 4 },
   countStrip: { flexDirection: 'row-reverse', flexWrap: 'wrap', backgroundColor: '#EAF0E8', borderRadius: 16, paddingVertical: 12, paddingHorizontal: 6 },
   countCell: { width: '33.333%', alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderLeftWidth: 1, borderLeftColor: '#D4DFD3', gap: 3 },
   lastCountCell: { borderLeftWidth: 0 },
@@ -346,8 +350,5 @@ const styles = StyleSheet.create({
   approvalNote: { borderTopWidth: 1, borderTopColor: '#DDE6DC', paddingTop: 12 },
   approveButton: { minHeight: 56, marginTop: 2 },
   savedBlock: { gap: 14 },
-  savedSection: { backgroundColor: '#FFFEFA', borderWidth: 1, borderColor: '#DFE7DE', borderRadius: 16, padding: 15, gap: 9 },
-  savedSectionHeading: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
-  savedCount: { color: '#176B62', fontSize: 14, fontWeight: '800', backgroundColor: '#E6F0E9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, overflow: 'hidden' },
   savedEntry: { color: '#425E56', backgroundColor: '#F4F6F1', borderRadius: 10, padding: 11, fontSize: 14, lineHeight: 23, textAlign: 'right' },
 });

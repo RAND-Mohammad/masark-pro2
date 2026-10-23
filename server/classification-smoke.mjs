@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { analyzeText } from './analysis.mjs';
-import { syntheticPdf } from './fixtures/synthetic-pdf.mjs';
 process.loadEnvFile(fileURLToPath(new URL('.env', import.meta.url)));
 const cv = `FICTIONAL TEST CV
 EDUCATION: Bachelor of Computer Science, Demo University, 2022 - Present. Currently studying; not graduated.
@@ -11,7 +10,7 @@ PROJECTS: Secure File Storage, Personal project, November 2024 - Present. Built 
 ACTIVITIES: Member, Demo University Cybersecurity Club, 2022 - Present. Participated in workshops.
 SKILLS: Python programming, software testing.`;
 try {
-  const result = await analyzeText(cv, { key: process.env.Gemini_API_Key_masarak?.trim(), pdf: syntheticPdf(cv.split('\n'), { fontSize: 8 }) });
+  const result = await analyzeText(cv, { key: process.env.GROQ_API_KEY?.trim() });
   assert.ok(result.education.some(item => /Bachelor/i.test(item.name)));
   assert.ok(result.projects.some(item => /Secure File Storage/i.test(item.name)));
   assert.ok(result.activities.length);

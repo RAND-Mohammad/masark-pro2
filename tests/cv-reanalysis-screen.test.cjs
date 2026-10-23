@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const harness = require('./helpers/auth-screen-harness.cjs');
 const projectModule = require('./helpers/project-module.cjs');
 const plain = value => JSON.parse(JSON.stringify(value));
-const consent = 'أوافق على إرسال ملف PDF ونص السيرة إلى Google Gemini لتحليله، ثم مراجعة النتائج قبل اعتمادها.';
+const consent = 'أوافق على إرسال نص السيرة إلى Groq.';
 const source = 'EDUCATION\n[University Name], Bachelor of Science in Computer Science\nExpected Graduation: 2027\nACADEMIC PROJECTS\nAircraft Runway Scheduling System\n• Designed an optimized Priority Scheduling Algorithm using Priority Queue';
 
 async function setup(platform, { fail = false, fileAvailable = true } = {}) {
