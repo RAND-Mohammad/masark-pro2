@@ -85,7 +85,7 @@ module.exports = function harness(file, { provider = false, session = null, getS
   class ClockDate extends Date { static now() { return clock; } }
   const globals = { Date: ClockDate, Error, URL, URLSearchParams, Promise, Map, Set, window: browser,
     process: { env: { EXPO_PUBLIC_CV_API_URL: 'https://app.example.test/api/cv' } }, __DEV__: true,
-    Blob, FormData, AbortController, setTimeout, clearTimeout,
+    Blob, FormData, AbortController, queueMicrotask, setTimeout, clearTimeout,
     setInterval: fn => { const id = intervals.size + 1; intervals.set(id, fn); return id; },
     clearInterval: id => intervals.delete(id) };
   const cache = {};
@@ -105,7 +105,7 @@ module.exports = function harness(file, { provider = false, session = null, getS
   }
   const exports = {};
   vm.runInNewContext(compile(file), { ...globals, exports, require: load });
-  const render = () => { cursor = 0; dirty = false; tree = provider ? exports.AuthProvider({ children: 'fixture-child' }) : exports.default(); };
+  const render = () => { cursor = 0; dirty = false; tree = provider ? exports[typeof provider === 'string' ? provider : 'AuthProvider']({ children: 'fixture-child' }) : exports.default(); };
   async function flush() {
     for (let pass = 0; pass < 30; pass++) {
       if (dirty) render();

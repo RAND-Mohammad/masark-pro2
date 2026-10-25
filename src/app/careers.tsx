@@ -22,7 +22,7 @@ export default function CareersScreen() {
     <Text style={ui.eyebrow}>اكتشف فرصتك القادمة</Text><Text style={ui.title}>مساراتك المهنية</Text><Text style={ui.text}>مرتبة حسب جاهزية مركبة من المهارات والتطبيق والشهادات والمعدل والتعلم. افتح المسار لرؤية التفصيل.</Text>
     <Pressable accessibilityRole="button" style={ui.outline} onPress={() => router.push('/majors')}><Text style={ui.outlineText}>دليل تخصصات جامعتنا ووظائفها</Text></Pressable>
     <DataSourceNotice />
-    <Text style={ui.note}>الترتيب من أدلة مهاراتك وتعليمك ومشاريعك وشهاداتك وتعلمك. الاهتمامات والسمات معلومات للملف، ولا تدخل حاليًا في معادلة الترتيب.</Text>
+    <Text style={ui.note}>الترتيب من أدلة مهاراتك وتعليمك ومشاريعك وشهاداتك وتعلمك. عند تساوي الجاهزية فقط، تتقدم المسارات المطابقة لاهتماماتك. الاهتمامات لا تزيد درجة الجاهزية.</Text>
     {!allReady ? <Text style={ui.text}>جارٍ جمع أدلة ملفك…</Text> : error ? <Text style={ui.text}>{error}</Text> : matches.map(career => <CareerCard key={career.career_id} career={career} />)}
     <Text style={ui.note}>الأوزان قرار تصميم موثق لمسارك وليست إحصائية قبول وظيفي. إعلان الوظيفة ودليل أعمالك يظلان المرجع النهائي.</Text>
   </ScrollView></SafeAreaView>;

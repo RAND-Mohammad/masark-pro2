@@ -8,26 +8,26 @@ export function CloudCard({ language = 'ar' }: { language?: 'ar' | 'en' } = {}) 
   const auth = useAuth(); const cloud = useCloud();
   const t = (ar: string, en: string) => language === 'en' ? en : ar;
   const direction = { textAlign: language === 'en' ? 'left' as const : 'right' as const, writingDirection: language === 'en' ? 'ltr' as const : 'rtl' as const };
-  if (!auth.session) return <DisclosureCard title={t('حفظ ملفي', 'Save my profile')} subtitle={t('الحفظ والخصوصية', 'Backup and privacy')} summary={t('ملف الضيف محفوظ على هذا الجهاز', 'Guest data stays on this device')} status={t('على الجهاز', 'On device')}>
-    <Text style={[ui.text, direction]}>{t('سجّل الدخول لتفعيل نسخة خاصة بحسابك في السحابة.', 'Sign in to enable a private cloud copy for your account.')}</Text>
+  if (!auth.session) return <DisclosureCard title={t('حفظ ملفي', 'Save my profile')} summary={t('بيانات الضيف محلية ومنفصلة', 'Guest data stays local and separate')} status={t('على الجهاز', 'On device')} subtitle={t('الحفظ والخصوصية', 'Backup and privacy')}>
+    <Text style={[ui.text, direction]}>{t('تُحفظ بيانات الحساب تلقائياً بعد تسجيل الدخول. لا تُرفع بيانات الضيف أو تُدمج تلقائياً.', 'Account data saves automatically after sign-in. Guest data is never uploaded or merged automatically.')}</Text>
   </DisclosureCard>;
-  const enabled = cloud.enabled;
-  const statuses: Record<string, string> = {
-    synced: t('نسخة ملفك متزامنة مع السحابة.', 'Your profile is synced with the cloud.'),
-    paused: t('المزامنة متوقفة على هذا الجهاز؛ النسخة السابقة تبقى في السحابة.', 'Sync is paused on this device; the previous cloud copy remains.'),
-    conflict: t('يوجد اختلاف بين نسخة الجهاز والسحابة. اختر النسخة التي تريد الاحتفاظ بها؛ الاختيار يستبدل النسخة الأخرى.', 'Device and cloud copies differ. Choose which one to keep; your choice replaces the other copy.'),
-    removed: t('النسخة السحابية لم تعد موجودة. احتفظنا ببيانات جهازك؛ فعّل الحفظ مجددًا إذا أردت رفعها.', 'The cloud copy is missing. Device data is preserved; enable backup again to upload it.'),
-    pending: t('بيانات الجهاز محفوظة، وهناك تحديث يحتاج إلى مزامنة.', 'Saved on this device; changes still need to sync.'),
-  };
-  return <DisclosureCard title={t('الحفظ السحابي', 'Cloud backup')} subtitle={t('نسخة خاصة بحسابك', 'Private account backup')} summary={statuses[cloud.status] ?? t('الحفظ على الجهاز فقط', 'Saved on this device only')} status={enabled ? t('مفعّل', 'On') : t('متوقف', 'Off')} statusTone={enabled ? 'success' : 'neutral'}>
-    <Text style={[ui.text, direction]}>{t('نحفظ نسخة خاصة بحسابك في Supabase؛ بيانات الضيف لا تُرفع تلقائيًا.', 'We keep a private copy in Supabase; guest data is never uploaded automatically.')}</Text>
-    {cloud.busy ? <><ActivityIndicator color={colors.primary} /><Text style={[ui.note, direction]}>{t('جارٍ مزامنة ملفك…', 'Syncing your profile…')}</Text></> : <Text style={[ui.note, direction]}>{statuses[cloud.status] ?? t('الحفظ الحالي على الجهاز فقط. يمكنك تفعيل الحفظ السحابي الآن.', 'Saved on this device only. Enable cloud backup to sync.')}</Text>}
-    {!!cloud.lastSynced && <Text style={[ui.note, direction]}>{t('آخر مزامنة:', 'Last synced:')} {new Date(cloud.lastSynced).toLocaleString(language === 'en' ? 'en-US' : 'ar-SA')}</Text>}
+  const saved = !cloud.busy && !cloud.error && cloud.status === 'synced';
+  const status = cloud.busy || cloud.status === 'checking' ? t('جارٍ الحفظ…', 'Saving…')
+    : cloud.error ? t('تعذر الحفظ', 'Saving failed') : saved ? t('تم الحفظ', 'Saved') : t('بانتظار المزامنة', 'Pending sync');
+  const summary = cloud.status === 'conflict'
+    ? t('تختلف نسخة الجهاز عن السحابة. اختر النسخة التي تريد الاحتفاظ بها؛ اختيارك يستبدل النسخة الأخرى.', 'Device and cloud copies differ. Choose which to keep; your choice replaces the other.')
+    : cloud.status === 'removed' ? t('النسخة السحابية غير موجودة. بيانات الجهاز محفوظة؛ يمكنك إعادة رفعها صراحةً.', 'Cloud copy is missing. Device data is preserved; you can explicitly upload it again.')
+    : saved ? t('تم تأكيد حفظ بيانات حسابك في السحابة.', 'Your account data was confirmed saved in the cloud.')
+    : t('تغييرات الحساب محفوظة على الجهاز. تُعاد محاولة المزامنة تلقائياً عند عودة الاتصال.', 'Account changes stay on this device. Sync retries automatically when connectivity returns.');
+  return <DisclosureCard title={t('الحفظ التلقائي', 'Automatic saving')} subtitle={t('نسخة خاصة بحسابك', 'Private account copy')} summary={summary} status={status} statusTone={saved ? 'success' : 'neutral'}>
+    <Text style={[ui.text, direction]}>{t('تُسترجع بيانات الحساب قبل مزامنة تغييراتك تلقائياً مع Supabase. تبقى بيانات الضيف منفصلة على الجهاز.', 'Account data is restored before changes sync automatically with Supabase. Guest data stays separate on this device.')}</Text>
+    {cloud.busy && <ActivityIndicator color={colors.primary} />}
+    <Text style={[ui.note, direction]}>{status}</Text>
+    {!!cloud.lastSynced && <Text style={[ui.note, direction]}>{t('آخر مزامنة مؤكدة:', 'Last confirmed sync:')} {new Date(cloud.lastSynced).toLocaleString(language === 'en' ? 'en-US' : 'ar-SA')}</Text>}
     {!!cloud.error && <Text style={[ui.text, { color: colors.error }]} accessibilityRole="alert">{cloud.error}</Text>}
     {cloud.status === 'conflict' ? <>
       <Pressable disabled={cloud.busy} accessibilityRole="button" style={ui.outline} onPress={() => void cloud.synchronize('cloud')}><Text style={ui.outlineText}>{t('استخدام نسخة السحابة على هذا الجهاز', 'Use the cloud copy on this device')}</Text></Pressable>
-      <Pressable disabled={cloud.busy} accessibilityRole="button" style={ui.outline} onPress={() => void cloud.synchronize('local', true)}><Text style={ui.outlineText}>{t('رفع نسخة هذا الجهاز بدل نسخة السحابة', 'Replace the cloud copy with this device')}</Text></Pressable>
-    </> : <Pressable disabled={cloud.busy} accessibilityRole="button" style={ui.button} onPress={() => void cloud.synchronize('auto', !enabled)}><Text style={ui.buttonText}>{enabled ? t('مزامنة الآن', 'Sync now') : t('تفعيل الحفظ السحابي', 'Enable cloud backup')}</Text></Pressable>}
-    {enabled && <Pressable disabled={cloud.busy} accessibilityRole="button" onPress={() => void cloud.pause()}><Text style={ui.link}>{t('إيقاف المزامنة على هذا الجهاز', 'Pause sync on this device')}</Text></Pressable>}
+      <Pressable disabled={cloud.busy} accessibilityRole="button" style={ui.outline} onPress={() => void cloud.synchronize('local', true)}><Text style={ui.outlineText}>{t('استبدال نسخة السحابة بنسخة الجهاز', 'Replace the cloud copy with this device')}</Text></Pressable>
+    </> : !saved && <Pressable disabled={cloud.busy} accessibilityRole="button" style={ui.button} onPress={() => void cloud.synchronize('auto', cloud.status === 'removed')}><Text style={ui.buttonText}>{t('إعادة المحاولة', 'Retry')}</Text></Pressable>}
   </DisclosureCard>;
 }

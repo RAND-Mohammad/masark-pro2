@@ -22,21 +22,23 @@ export async function synchronizeAccount(ports: CloudPorts, choice: SyncChoice =
     await ports.changeMeta(m => ({ ...m, dirty: true, localVersion: m.localVersion + 1 }));
     meta = await ports.readMeta();
   }
-  if (meta.paused && !enable && choice === 'auto') return 'paused';
+  // Saving is automatic for accounts, including formerly paused devices.
+  await ports.changeMeta(m => ({ ...m, enabled: true, paused: false }));
   const remote = await ports.readRemote();
   ports.assertCurrent();
   meta = await ports.readMeta();
   if (!remote && choice === 'cloud') return 'removed';
-  if (!remote && !meta.enabled && !enable) return 'disabled';
   if (!remote && meta.baseRevision !== null && !enable) {
-    await ports.changeMeta(m => ({ ...m, enabled: false, paused: true, baseRevision: null, dirty: true }));
+    // Retain the baseline: retries must not recreate a deleted cloud copy.
+    await ports.changeMeta(m => ({ ...m, dirty: true }));
     return 'removed';
   }
   const initialLocal = remote !== null && meta.baseRevision === null && await ports.hasLocalData();
+  const freshEmpty = remote !== null && meta.baseRevision === null && !initialLocal;
   ports.assertCurrent();
-  const hasConflict = remote !== null && ((meta.dirty && remote.revision !== meta.baseRevision) || initialLocal);
+  const hasConflict = remote !== null && ((meta.dirty && !freshEmpty && remote.revision !== meta.baseRevision) || initialLocal);
   if (choice === 'auto' && hasConflict) return 'conflict';
-  if (remote && (choice === 'cloud' || (!meta.dirty && meta.baseRevision !== remote.revision && !initialLocal))) {
+  if (remote && (choice === 'cloud' || freshEmpty || (!meta.dirty && meta.baseRevision !== remote.revision && !initialLocal))) {
     const version = meta.localVersion;
     if ((await ports.readMeta()).localVersion !== version) return 'pending';
     const restored = await ports.restore(remote.snapshot);
@@ -44,7 +46,6 @@ export async function synchronizeAccount(ports: CloudPorts, choice: SyncChoice =
     await ports.changeMeta(m => ({ ...m, enabled: true, paused: false, dirty: false, baseRevision: remote.revision, lastSynced: new Date().toISOString(), fileBinding: restored.binding, lastLocalState: restored.localState }));
     return 'synced';
   }
-  if (!meta.enabled && !enable && choice === 'auto') return 'disabled';
   if (!meta.dirty && remote && choice !== 'local') return 'synced';
   const version = meta.localVersion;
   const prepared = await ports.prepareUpload();

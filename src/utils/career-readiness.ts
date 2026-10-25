@@ -7,7 +7,7 @@ import type { SkillProfile } from './skill-profile';
 import type { LearningProgress } from './learning-progress';
 import { jobPaths, resolveBaseCareerId } from '../constants/job-paths';
 import { jobPathRequirementProfile } from '../constants/job-path-requirements';
-import { isRelevantEvidence } from './evidence-keywords';
+import { containsEvidenceTerm, isRelevantEvidence } from './evidence-keywords';
 
 export type ReadinessWeights = { skills: number; practical: number; certifications: number; academic: number; learning: number };
 export const readinessWeights: Record<string, ReadinessWeights> = {
@@ -84,9 +84,24 @@ export function calculateCareerReadiness(careerId: string, input: ReadinessInput
   };
 }
 
+// Normalize spelling and presentation only; matching uses the existing role vocabulary.
+function normalizeInterest(value: string) {
+  return value.normalize('NFKC').toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim().split(/\s+/).map(word => word.startsWith('ال') ? word.slice(2) : word).join(' ');
+}
+
 export function getCareerReadinessMatches(input: ReadinessInputs) {
   return jobPaths.map(career => {
     const readiness = calculateCareerReadiness(career.id, input);
+    const keywords = (jobPathRequirementProfile(career.id) ?? careerProfiles[resolveBaseCareerId(career.id)])?.evidenceKeywords ?? [];
+    const terms = [career.title, ...keywords].map(normalizeInterest).filter(Boolean);
+    const matchedInterests = (input.personal?.interests ?? []).filter(interest => {
+      const normalized = normalizeInterest(interest);
+      return normalized && terms.some(term => containsEvidenceTerm(normalized, term));
+    });
     return {
       career_id: career.id, title: career.title, description: career.description,
       score: readiness.score,
@@ -96,6 +111,9 @@ export function getCareerReadinessMatches(input: ReadinessInputs) {
       missing: readiness.skillReport.missingCore,
       breakdown: readiness.breakdown,
       weights: readiness.weights,
+      matchedInterests,
     };
-  }).sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  // Stable sort retains catalogue order within equally matched readiness ties.
+  }).sort((a, b) => (b.score ?? -1) - (a.score ?? -1)
+    || Number(b.matchedInterests.length > 0) - Number(a.matchedInterests.length > 0));
 }

@@ -29,6 +29,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     const current = runtime.current;
     if (!current || running.current.has(current)) return;
     const stillCurrent = () => alive.current && runtime.current === current;
+    if (timer.current) clearTimeout(timer.current);
     running.current.add(current); setBusy(true); setError('');
     try {
       const result = await current.sync(choice, enable);
@@ -38,8 +39,8 @@ export function CloudProvider({ children }: { children: ReactNode }) {
       if (!stillCurrent()) return;
       setLastSynced(meta.lastSynced);
       setEnabled(meta.enabled);
-      if (result === 'pending' && meta.enabled && !meta.paused) timer.current = setTimeout(() => { void synchronizeRef.current(); }, 1000);
-    } catch (failure) { if (stillCurrent()) { setError(cloudErrorMessage(failure)); setStatus('pending'); } }
+      if (result === 'pending') timer.current = setTimeout(() => { void synchronizeRef.current(); }, 1000);
+    } catch (failure) { if (stillCurrent()) { setError(cloudErrorMessage(failure)); setStatus('pending'); timer.current = setTimeout(() => { if (stillCurrent()) void synchronizeRef.current(); }, 15000); } }
     finally { running.current.delete(current); if (stillCurrent()) { setBusy(false); setRestoring(false); setReady(true); } }
   }, []);
   useEffect(() => { synchronizeRef.current = synchronize; }, [synchronize]);
@@ -53,11 +54,13 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     const unsubscribe = subscribeDataChanges((scope, failed) => {
       if (scope.owner !== accountId || !alive.current) return;
       if (failed) { setStatus('pending'); setError('حُفظت البيانات على الجهاز، لكن تعذر تجهيز مزامنتها. أعد المحاولة قبل إغلاق التطبيق.'); return; }
+      setStatus('pending');
       if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => { void current.meta().then(meta => { if (alive.current && runtime.current === current && meta.enabled && !meta.paused) { setStatus('pending'); void synchronizeRef.current(); } }).catch(() => undefined); }, 900);
+      timer.current = setTimeout(() => { void current.meta().then(meta => { if (alive.current && runtime.current === current) { setStatus('pending'); void synchronizeRef.current(); } }).catch(() => undefined); }, 900);
     });
-    const appState = AppState.addEventListener('change', state => { if (state === 'active') void current.meta().then(meta => { if (alive.current && runtime.current === current && meta.enabled && !meta.paused) void synchronizeRef.current(); }).catch(() => undefined); });
-    return () => { alive.current = false; unsubscribe(); appState.remove(); current.stop(); runtime.current = null; if (timer.current) clearTimeout(timer.current); };
+    const retry = setInterval(() => { if (alive.current && runtime.current === current) void synchronizeRef.current(); }, 30000);
+    const appState = AppState.addEventListener('change', state => { if (state === 'active') void current.meta().then(meta => { if (alive.current && runtime.current === current) void synchronizeRef.current(); }).catch(() => undefined); });
+    return () => { alive.current = false; unsubscribe(); clearInterval(retry); appState.remove(); current.stop(); runtime.current = null; if (timer.current) clearTimeout(timer.current); };
   }, [auth.ready, accountId]);
   async function pause() {
     const current = runtime.current;

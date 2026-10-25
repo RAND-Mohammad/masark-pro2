@@ -11,6 +11,7 @@ export function CareerCard({ career }: { career: ReturnType<typeof getCareerRead
     <View style={ui.row}><View style={styles.badge}><MasarakIcon name="careers" /></View><Text style={styles.score}>{career.score === null ? 'استكشف' : `${career.score}% جاهزية`}</Text></View>
     <Text style={ui.heading}>{careerTitles[career.career_id] ?? career.title}</Text>
     <Text style={styles.english}>{career.title}</Text>
+    {career.matchedInterests.length > 0 ? <Text style={ui.note}>اهتمامات متطابقة: {career.matchedInterests.join('، ')}</Text> : null}
     <View style={styles.track}><View style={[styles.progress, { width: `${career.score ?? 0}%` }]} /></View>
     <View style={ui.row}><Text style={ui.note}>{career.score === null ? 'أكمل ملفك لاحتساب الجاهزية' : `تغطية المهارات ${career.skillScore ?? 0}% · ${career.matched} من ${career.total}`}</Text><MasarakIcon name="arrow" size={19} /></View>
   </Pressable>;

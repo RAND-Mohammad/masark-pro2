@@ -65,10 +65,9 @@ function engineFixture(options = {}) {
 }
 const remote = revision => ({ revision, snapshot: clone(emptySnapshot), updated_at: '2026-10-14T08:00:00Z' });
 
-test('new accounts do not upload local data until cloud saving is enabled', async () => {
+test('new accounts automatically save account-local data after reading cloud', async () => {
   const f = engineFixture({ hasLocal: true, local: 'local CV' });
-  assert.equal(await f.sync(), 'disabled'); assert.equal(f.s.writes, 0);
-  assert.equal(await f.sync('auto', true), 'synced'); assert.equal(f.s.writes, 1); assert.equal(f.s.meta.enabled, true);
+  assert.equal(await f.sync(), 'synced'); assert.equal(f.s.reads, 1); assert.equal(f.s.writes, 1); assert.equal(f.s.meta.enabled, true);
 });
 
 test('learning progress accepts valid completion dates and old snapshots remain compatible', () => {
@@ -135,11 +134,12 @@ test('exact baseline comparison recovers an edit whose dirty marker was not pers
   const f = engineFixture({ local: 'edited', remote: remote(2), meta: { enabled: true, dirty: false, lastLocalState: 'before edit', baseRevision: 2 } });
   assert.equal(await f.sync(), 'synced'); assert.equal(f.s.writes, 1); assert.equal(f.s.meta.lastLocalState, 'edited');
 });
-test('paused accounts make no cloud request, and deleted cloud data is not silently recreated', async () => {
+test('formerly paused accounts resume automatically; deleted cloud data is not silently recreated', async () => {
   const paused = engineFixture({ meta: { enabled: false, paused: true } });
-  assert.equal(await paused.sync(), 'paused'); assert.equal(paused.s.reads, 0);
+  assert.equal(await paused.sync(), 'synced'); assert.equal(paused.s.reads, 1);
   const removed = engineFixture({ hasLocal: true, meta: { enabled: true, baseRevision: 2 } });
-  assert.equal(await removed.sync(), 'removed'); assert.equal(removed.s.writes, 0); assert.equal(removed.s.meta.paused, true);
+  assert.equal(await removed.sync(), 'removed'); assert.equal(removed.s.writes, 0); assert.equal(removed.s.meta.baseRevision, 2);
+  assert.equal(await removed.sync(), 'removed'); assert.equal(removed.s.writes, 0);
 });
 test('switching accounts while reading remote data prevents restore and upload', async () => {
   const f = engineFixture({ remote: remote(2) }); f.s.onRead = () => { f.s.current = false; };
@@ -203,3 +203,18 @@ test('temporary cloud clients never reuse the login client auth storage namespac
   assert.equal(first.options.global.headers.Authorization, 'Bearer FIXTURE_A');
   assert.equal(second.options.global.headers.Authorization, 'Bearer FIXTURE_B');
 });
+
+ test('dirty empty first-device state restores existing data without uploading', async () => {
+ const f = engineFixture({remote: remote(4), meta: {dirty:true}});
+ assert.equal(await f.sync(), 'synced'); assert.equal(f.s.restores,1); assert.equal(f.s.writes,0);
+ });
+ test('offline account edits survive failure and retry against the same baseline', async () => {
+ const f = engineFixture({remote:remote(2), local:'offline edit', hasLocal:true, meta:{dirty:true,baseRevision:2}});
+ f.s.failSave = Error('offline'); await assert.rejects(f.sync());
+ assert.equal(f.s.local,'offline edit'); assert.equal(f.s.meta.dirty,true);
+ f.s.failSave=null; assert.equal(await f.sync(),'synced'); assert.equal(f.s.meta.baseRevision,3);
+ });
+ test('switching accounts during upload cannot confirm success in the new account', async () => {
+ const f = engineFixture({meta:{dirty:true}}); f.s.onSave=()=>{f.s.current=false};
+ await assert.rejects(f.sync()); assert.equal(f.s.meta.lastSynced,null);
+ });
