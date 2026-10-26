@@ -14,6 +14,7 @@ import { usePersonalProfile } from '../hooks/use-personal-profile';
 import { useLearningProgress } from '../hooks/use-learning-progress';
 import { useProfessionalCertifications } from '../hooks/use-professional-certifications';
 import { getCareerReadinessMatches } from '../utils/career-readiness';
+import { MarketCareerSummary } from '../components/market-career-summary';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function HomeScreen() {
   const best = matches[0];
   const readinessReady = ready && personalState.ready && courseProgress.ready && professionalCertifications.ready;
   const tools = [
+    { title: 'وظائف مناسبة لي', subtitle: 'توافق سيرتك وفجوات الوظائف وخطتها', route: '/jobs', icon: 'careers' },
     { title: 'ملفي وسيرتي', subtitle: profile?.cv ? 'راجع معلوماتك المحفوظة' : 'ابدأ بإجابات أو PDF اختياري', route: '/profile', icon: 'profile' },
     { title: 'تحليل المهارات', subtitle: 'اكتشف المسارات ومهاراتها', route: '/careers', icon: 'careers' },
     { title: 'تخصصات الجامعة', subtitle: 'وظائف ومهارات وشهادات كل تخصص', route: '/majors', icon: 'careers' },
@@ -52,6 +54,7 @@ export default function HomeScreen() {
       <Text style={ui.note}>عند تساوي الجاهزية فقط، تتقدم المسارات المطابقة لاهتماماتك. الاهتمامات لا تزيد درجة الجاهزية.</Text>
       {matches.slice(0, 2).map(career => <CareerCard key={career.career_id} career={career} />)}
       <Text style={ui.note}>الجاهزية تقدير إرشادي من أدلة ملفك وليست احتمال قبول أو ضمان توظيف. افتح المسار لرؤية النقاط والأوزان.</Text>
+      <MarketCareerSummary />
       <Text style={ui.note}>المسارات والدورات كتالوج إرشادي ثابت، وليست وظائف أو فرص تدريب حية. الأسعار والتوفر تخضع للمزود. ملف الضيف محلي؛ فعّل الحفظ السحابي داخل «ملفي» لحفظ بيانات حسابك في Supabase.</Text>
     </ScrollView>
   </SafeAreaView>;

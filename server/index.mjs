@@ -2,10 +2,14 @@ import { fileURLToPath } from 'node:url';
 import { networkInterfaces } from 'node:os';
 import { chmodSync } from 'node:fs';
 import { createCvApp } from './cv-app.mjs';
+import { startJobsRefresh } from './jobs.mjs';
 
-// Read only the server environment. Never include this module in the app bundle.
+// نقرأ إعدادات التطبيق، والمفاتيح الخاصة تبقى في ملف السيرفر.
+try { process.loadEnvFile(fileURLToPath(new URL('../.env', import.meta.url))); } catch { /* Optional local configuration. */ }
 try { process.loadEnvFile(fileURLToPath(new URL('.env', import.meta.url))); } catch { /* Existing process environment is also supported. */ }
 const app = createCvApp();
+const stopJobsRefresh = startJobsRefresh();
+process.on('exit', stopJobsRefresh);
 const port = Number(process.env.PORT || 3001);
 const host = process.env.CV_HOST || '0.0.0.0';
 const socketPath = process.env.CV_DEV_SOCKET;

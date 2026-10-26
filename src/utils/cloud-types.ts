@@ -4,9 +4,10 @@ import { validReview, type CvReview } from './saved-cv.types';
 import { validateCvFile } from './cv-file';
 import { isValidLearningPlanId } from './learning-plan';
 import { parseInterviewHistory, type InterviewResult } from './interview-types';
+import { parseJobTarget, type JobTarget } from './job-target';
 
 export type CloudCv = { path: string; name: string; size: number; mimeType: string; review: CvReview | null };
-export type CloudSnapshot = { version: 1; personal: PersonalProfile | null; skills: SkillProfile | null; plan: string[]; learningProgress: Record<string, string>; professionalCertifications: string[]; cv: CloudCv | null; interviews?: InterviewResult[] };
+export type CloudSnapshot = { version: 1; personal: PersonalProfile | null; skills: SkillProfile | null; plan: string[]; learningProgress: Record<string, string>; professionalCertifications: string[]; cv: CloudCv | null; interviews?: InterviewResult[]; jobTarget?: JobTarget | null };
 export type CloudRecord = { revision: number; snapshot: CloudSnapshot; updated_at: string };
 export type CloudMeta = { version: 1; enabled: boolean; paused: boolean; dirty: boolean; localVersion: number; baseRevision: number | null; lastSynced: string | null; lastLocalState: string | null; fileBinding: { identity: string; path: string } | null };
 export const CLOUD_META_KEY = 'masarak-cloud-sync-v1';
@@ -33,7 +34,7 @@ export function parseCloudSnapshot(value: unknown, owner: string): CloudSnapshot
     if (!v.cv || typeof v.cv.path !== 'string' || !validCloudPath(v.cv.path, owner) || typeof v.cv.name !== 'string' || v.cv.name.length > 250 || typeof v.cv.mimeType !== 'string' || typeof v.cv.size !== 'number' || !Number.isFinite(v.cv.size) || v.cv.size < 1 || validateCvFile(v.cv) || (v.cv.review !== null && !validReview(v.cv.review))) throw new Error('Invalid cloud CV');
     cv = { path: v.cv.path, name: v.cv.name, size: v.cv.size, mimeType: v.cv.mimeType, review: v.cv.review };
   }
-  return { version: 1, personal: v.personal === null ? null : parsePersonalProfile(v.personal), skills: v.skills === null ? null : parseSkillProfile(v.skills), plan: [...new Set(v.plan.filter(isValidLearningPlanId))], learningProgress, professionalCertifications, cv, ...(v.interviews !== undefined ? { interviews: parseInterviewHistory(v.interviews) } : {}) };
+  return { version: 1, personal: v.personal === null ? null : parsePersonalProfile(v.personal), skills: v.skills === null ? null : parseSkillProfile(v.skills), plan: [...new Set(v.plan.filter(isValidLearningPlanId))], learningProgress, professionalCertifications, cv, ...(v.interviews !== undefined ? { interviews: parseInterviewHistory(v.interviews) } : {}), ...(v.jobTarget !== undefined ? { jobTarget: parseJobTarget(v.jobTarget) } : {}) };
 }
 export function parseCloudMeta(raw: string | null): CloudMeta {
   if (raw === null) return defaultCloudMeta();

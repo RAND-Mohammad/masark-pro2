@@ -21,7 +21,7 @@ function point(text) {
   return month < 0 ? null : { value: Number(named[2]) * 12 + month, approximate: false };
 }
 
-export function experienceDuration(dates, analyzedAt) {
+export function experienceInterval(dates, analyzedAt) {
   if (typeof dates !== 'string' || /expected|graduat|متوقع|تخرج/iu.test(dates)) return null;
   const asOf = analyzedAt ? new Date(analyzedAt) : new Date();
   if (!Number.isFinite(asOf.getTime())) return null;
@@ -36,9 +36,15 @@ export function experienceDuration(dates, analyzedAt) {
   const currentMonth = asOf.getUTCFullYear() * 12 + asOf.getUTCMonth();
   const end = ongoing ? { value: currentMonth, approximate: false } : point(match[2]);
   if (!start || !end || start.value > end.value || end.value > currentMonth) return null;
-  const duration = end.value - start.value;
+  return { startMonth: start.value, endMonth: end.value, approximate: start.approximate || end.approximate, ongoing, asOf: asOf.toISOString().slice(0, 10) };
+}
+
+export function experienceDuration(dates, analyzedAt) {
+  const interval = experienceInterval(dates, analyzedAt);
+  if (!interval) return null;
+  const duration = interval.endMonth - interval.startMonth;
   return { months: duration, years: Math.floor(duration / 12), remainderMonths: duration % 12,
-    approximate: start.approximate || end.approximate, ongoing, asOf: asOf.toISOString().slice(0, 10) };
+    approximate: interval.approximate, ongoing: interval.ongoing, asOf: interval.asOf };
 }
 
 export function describeExperienceDuration(dates, analyzedAt) {
