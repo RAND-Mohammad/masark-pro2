@@ -34,7 +34,7 @@ export function updateScopedRaw(key: string, change: (raw: string | null) => str
 let tracking = false;
 const suppressed = new Map<string | null, number>();
 const listeners = new Set<(scope: Scope, failure: boolean) => void>();
-const trackedKeys = new Set(['masarak-skills-v1', 'masarak-learning-plan-v1', 'masarak-learning-progress-v1', 'masarak-professional-certifications-v1', 'masarak-personal-profile-v1', 'masarak-saved-cv-v1', 'masarak-interviews-v1']);
+const trackedKeys = new Set(['masarak-skills-v1', 'masarak-learning-plan-v1', 'masarak-learning-progress-v1', 'masarak-professional-certifications-v1', 'masarak-personal-profile-v1', 'masarak-saved-cv-v1', 'masarak-interviews-v1', 'masarak-job-target-v1']);
 export function enableCloudChangeTracking() { tracking = true; }
 export function subscribeDataChanges(listener: (scope: Scope, failure: boolean) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 export async function withoutChangeTracking<T>(account: string | null, action: () => Promise<T>): Promise<T> {

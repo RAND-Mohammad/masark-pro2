@@ -9,6 +9,7 @@ import { useLearningProgress } from '../hooks/use-learning-progress';
 import { useProfessionalCertifications } from '../hooks/use-professional-certifications';
 import { getCareerReadinessMatches } from '../utils/career-readiness';
 import { DataSourceNotice } from '../components/data-source-notice';
+import { MarketCareerSummary } from '../components/market-career-summary';
 
 export default function CareersScreen() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function CareersScreen() {
     <Text style={ui.eyebrow}>اكتشف فرصتك القادمة</Text><Text style={ui.title}>مساراتك المهنية</Text><Text style={ui.text}>مرتبة حسب جاهزية مركبة من المهارات والتطبيق والشهادات والمعدل والتعلم. افتح المسار لرؤية التفصيل.</Text>
     <Pressable accessibilityRole="button" style={ui.outline} onPress={() => router.push('/majors')}><Text style={ui.outlineText}>دليل تخصصات جامعتنا ووظائفها</Text></Pressable>
     <DataSourceNotice />
+    <MarketCareerSummary />
     <Text style={ui.note}>الترتيب من أدلة مهاراتك وتعليمك ومشاريعك وشهاداتك وتعلمك. عند تساوي الجاهزية فقط، تتقدم المسارات المطابقة لاهتماماتك. الاهتمامات لا تزيد درجة الجاهزية.</Text>
     {!allReady ? <Text style={ui.text}>جارٍ جمع أدلة ملفك…</Text> : error ? <Text style={ui.text}>{error}</Text> : matches.map(career => <CareerCard key={career.career_id} career={career} />)}
     <Text style={ui.note}>الأوزان قرار تصميم موثق لمسارك وليست إحصائية قبول وظيفي. إعلان الوظيفة ودليل أعمالك يظلان المرجع النهائي.</Text>

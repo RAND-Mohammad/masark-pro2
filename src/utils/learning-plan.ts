@@ -3,7 +3,7 @@ import dataset from '../masarak_dataset.json';
 
 export const LEARNING_PLAN_KEY = 'masarak-learning-plan-v1';
 const key = LEARNING_PLAN_KEY;
-const validIds = new Set(dataset.career_skills.map((item) => item.skill_id));
+const validIds = new Set(dataset.skills.map((item) => item.skill_id));
 const plannedArtifact = /^(cert|experience|project):[a-z0-9-]+(?::[0-9]+)?$/;
 let pending: Promise<unknown> = Promise.resolve();
 

@@ -17,6 +17,10 @@ import { certificationPlanId, experiencePlanId, projectPlanId } from '../utils/l
 import { isRelevantEvidence } from '../utils/evidence-keywords';
 import { DataSourceNotice } from '../components/data-source-notice';
 import { DisclosureCard } from '../components/disclosure-card';
+import { useJobTarget } from '../hooks/use-job-target';
+import { useMarketJobs } from '../hooks/use-market-jobs';
+import { matchMarketJob } from '../utils/job-matching';
+import { JobGapPlan } from '../components/job-gap-plan';
 
 export default function LearningPlanScreen() {
   const router = useRouter();
@@ -25,6 +29,10 @@ export default function LearningPlanScreen() {
   const profileState = useSkillProfile();
   const personalState = usePersonalProfile();
   const certificationState = useProfessionalCertifications();
+  const targetState = useJobTarget();
+  const market = useMarketJobs();
+  const targetJob = targetState.target ? market.data?.jobs.find(job => job.id === targetState.target!.job.id) ?? targetState.target.job : null;
+  const targetMatch = targetJob && profileState.ready && personalState.ready && !profileState.error && !personalState.error ? matchMarketJob(targetJob, profileState.profile, personalState.personal) : null;
   const selectedPath = jobPathById(personalState.personal?.careerGoal);
   const roleProfile = jobPathRequirementProfile(selectedPath?.id ?? '');
   const roleCertifications = certificationsByIds(roleProfile?.certificationIds ?? []);
@@ -60,6 +68,10 @@ export default function LearningPlanScreen() {
           <Text style={styles.link}>العودة</Text>
         </Pressable>
         <Text style={styles.title}>خطة تعلمي</Text>
+        {targetMatch ? <><Text style={styles.heading}>هدفك من إعلانات الوظائف</Text><Text style={styles.note}>التوافق الحالي: {targetMatch.score === null ? 'غير محسوب' : `${targetMatch.score}%`}. تتغير المقارنة مع تحديث ملفك؛ إكمال الدورات وحده لا يثبت المهارة.</Text>
+          {!market.data?.jobs.some(job => job.id === targetJob?.id) ? <Text style={styles.note}>نعرض نسخة إعلانك المحفوظة؛ لم يظهر في العينة الحالية. هذا لا يثبت إغلاقه، راجع المصدر.</Text> : null}
+          <JobGapPlan match={targetMatch} /><Pressable accessibilityRole="button" onPress={() => router.push('/jobs')}><Text style={styles.link}>راجع الوظيفة وتحديثاتها أو غيّر هدفك</Text></Pressable></> : null}
+        {targetState.error ? <Text style={styles.note}>{targetState.error}</Text> : null}
         <DataSourceNotice />
         <Text style={styles.note}>النسب تمثل إكمال العناصر بإقرارك أو وجود دليل مرتبط، ولا تختبر إتقانك. الإضافة إلى الخطة لا تمنح أي تقدم. المسار المقترح يبنى من الفجوات ولا يحذف خططك السابقة.</Text>
         {profileState.error ? <Text style={styles.note}>{profileState.error}</Text> : null}

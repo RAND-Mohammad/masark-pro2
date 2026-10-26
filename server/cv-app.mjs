@@ -4,6 +4,7 @@ import { analyzeText, extractText, CvError } from './analysis.mjs';
 import { createEmailHookRouter } from './auth-email-hook.mjs';
 import { createCvSessionGuard } from './cv-session.mjs';
 import { createInterviewRouter } from './interview.mjs';
+import { createJobsRouter } from './jobs.mjs';
 import { CV_PARSER_VERSION } from '../src/utils/cv-parser-version.mjs';
 
 // Separating construction from listening lets tests use a loopback-only server.
@@ -32,6 +33,7 @@ export function createCvApp({
     status: 'ok', configured: Boolean(process.env.GROQ_API_KEY?.trim()), parserVersion: CV_PARSER_VERSION,
   }));
   app.use('/interview', createInterviewRouter({ authenticate }));
+  app.use('/jobs', createJobsRouter({ authenticate }));
   app.post('/analyze-cv', authenticate, (req, res, next) => {
     while (attempts.length && Date.now() - attempts[0] > 60000) attempts.shift();
     if (inProgress || attempts.length >= 5) return res.status(429).json({ error: 'الخادم مشغول أو وصل لحد الطلبات. حاول بعد قليل.' });

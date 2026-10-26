@@ -5,7 +5,7 @@ function createCvDevProxy({ port = 3001, socketPath = process.env.CV_DEV_SOCKET 
   return (req, res, next) => {
     const pathname = req.url.split('?')[0];
     if (pathname !== '/api/cv' && !pathname.startsWith('/api/cv/')) return next();
-    const routes = { '/api/cv/health': '/health', '/api/cv/analyze-cv': '/analyze-cv', '/api/cv/interview/questions': '/interview/questions', '/api/cv/interview/evaluate': '/interview/evaluate' };
+    const routes = { '/api/cv/health': '/health', '/api/cv/analyze-cv': '/analyze-cv', '/api/cv/interview/questions': '/interview/questions', '/api/cv/interview/evaluate': '/interview/evaluate', '/api/cv/jobs': '/jobs' };
     if (!Object.hasOwn(routes, pathname)) {
       res.writeHead(404, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       return res.end(JSON.stringify({ error: 'المسار غير متاح.' }));
