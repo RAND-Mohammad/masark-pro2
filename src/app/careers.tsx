@@ -1,31 +1,25 @@
-import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, Text } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ui } from '../constants/design';
+import { colors, createAdaptiveStyles, ui } from '../constants/design';
 import { useSkillProfile } from '../hooks/use-skill-profile';
 import { CareerCard } from '../components/career-card';
 import { usePersonalProfile } from '../hooks/use-personal-profile';
-import { useLearningProgress } from '../hooks/use-learning-progress';
-import { useProfessionalCertifications } from '../hooks/use-professional-certifications';
-import { getCareerReadinessMatches } from '../utils/career-readiness';
-import { DataSourceNotice } from '../components/data-source-notice';
-import { MarketCareerSummary } from '../components/market-career-summary';
+import { getCareerMatches } from '../utils/career-matching';
+import { useAppPreferences } from '../contexts/app-preferences-context';
 
 export default function CareersScreen() {
-  const router = useRouter();
   const { profile, ready, error } = useSkillProfile();
   const personal = usePersonalProfile();
-  const learning = useLearningProgress();
-  const certifications = useProfessionalCertifications();
-  const matches = getCareerReadinessMatches({ skillProfile: profile, personal: personal.personal, learningProgress: learning.progress, professionalCertifications: certifications.achieved });
-  const allReady = ready && personal.ready && learning.ready && certifications.ready;
+  const { language } = useAppPreferences();
+  const en = language === 'en';
+  const matches = getCareerMatches({ skillProfile: profile, personal: personal.personal });
+  const allReady = ready && personal.ready;
   return <SafeAreaView edges={['top', 'left', 'right']} style={ui.screen}><ScrollView contentContainerStyle={ui.content}>
-    <Text style={ui.eyebrow}>اكتشف فرصتك القادمة</Text><Text style={ui.title}>مساراتك المهنية</Text><Text style={ui.text}>مرتبة حسب جاهزية مركبة من المهارات والتطبيق والشهادات والمعدل والتعلم. افتح المسار لرؤية التفصيل.</Text>
-    <Pressable accessibilityRole="button" style={ui.outline} onPress={() => router.push('/majors')}><Text style={ui.outlineText}>دليل تخصصات جامعتنا ووظائفها</Text></Pressable>
-    <DataSourceNotice />
-    <MarketCareerSummary />
-    <Text style={ui.note}>الترتيب من أدلة مهاراتك وتعليمك ومشاريعك وشهاداتك وتعلمك. عند تساوي الجاهزية فقط، تتقدم المسارات المطابقة لاهتماماتك. الاهتمامات لا تزيد درجة الجاهزية.</Text>
-    {!allReady ? <Text style={ui.text}>جارٍ جمع أدلة ملفك…</Text> : error ? <Text style={ui.text}>{error}</Text> : matches.map(career => <CareerCard key={career.career_id} career={career} />)}
-    <Text style={ui.note}>الأوزان قرار تصميم موثق لمسارك وليست إحصائية قبول وظيفي. إعلان الوظيفة ودليل أعمالك يظلان المرجع النهائي.</Text>
+    <Text style={[ui.eyebrow, en && styles.ltr]}>{en ? 'YOUR CAREER PATHS' : 'مساراتك المهنية'}</Text><Text style={[styles.pageTitle, en && styles.ltr]}>{en ? 'A future built on your strengths.' : 'مستقبل يُبنى على نقاط قوتك.'}</Text><Text style={[styles.description, en && styles.ltr]}>{en ? 'Weighted skills, interests, personality and education.' : 'تُوزن المهارات والاهتمامات والسمات والتعليم لاقتراح مسارات تستحق الاستكشاف.'}</Text>
+    <Text style={[ui.note, en && styles.ltr]}>{en ? 'Career match uses skills 50%, interests 20%, traits 15%, and education 15%. Readiness is separate.' : 'تُحسب ملاءمة المسار من المهارات 50%، والاهتمامات 20%، والسمات 15%، والتعليم 15%. الجاهزية مقياس منفصل.'}</Text>
+    {!allReady ? <Text style={[ui.text, en && styles.ltr]}>{en ? 'Loading your profile evidence…' : 'جارٍ جمع أدلة ملفك…'}</Text> : error ? <Text style={[ui.text, en && styles.ltr]}>{error}</Text> : matches.map(career => <CareerCard key={career.career_id} career={career} />)}
+    <Text style={[ui.note, en && styles.ltr]}>{en ? 'Matches suggest paths to explore—not job eligibility or hiring probabilities.' : 'تساعدك المطابقة على استكشاف المسارات؛ ولا تعني أهلية لوظيفة أو احتمال قبول.'}</Text>
   </ScrollView></SafeAreaView>;
 }
+
+const styles = createAdaptiveStyles(() => ({ pageTitle: { color: colors.navy, fontSize: 32, lineHeight: 40, fontWeight: '800', textAlign: 'right' as const }, description: { color: colors.muted, fontSize: 18, lineHeight: 27, textAlign: 'right' as const }, ltr: { textAlign: 'left' as const, writingDirection: 'ltr' as const } }));

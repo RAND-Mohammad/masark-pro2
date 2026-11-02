@@ -181,7 +181,37 @@ export const learningResources: LearningResource[] = [
 ];
 
 export const learningResourceIds = new Set(learningResources.map(resource => resource.id));
+const catalogListeners = new Set<() => void>();
+let catalogVersion = 0;
+export function learningResourcesVersion() { return catalogVersion; }
+export function subscribeLearningResources(listener: () => void) { catalogListeners.add(listener); return () => catalogListeners.delete(listener); }
 
 export function getLearningResources(skillId: string): LearningResource[] {
   return learningResources.filter(resource => resource.skillIds.includes(skillId));
+}
+
+// Keep the catalog in place so all existing consumers observe server-managed updates.
+export function replaceLearningResources(input: unknown): boolean {
+  if (!Array.isArray(input) || input.length > 300) return false;
+  const next: LearningResource[] = [];
+  const seen = new Set<string>();
+  for (const value of input) {
+    if (!value || typeof value !== 'object') return false;
+    const resource = value as Partial<LearningResource>;
+    if (typeof resource.id !== 'string' || !/^[a-z0-9][a-z0-9-]{1,79}$/.test(resource.id) || seen.has(resource.id)) return false;
+    if (['title', 'provider', 'url', 'level', 'duration', 'access', 'language'].some(key => typeof resource[key as keyof LearningResource] !== 'string')) return false;
+    if (!Array.isArray(resource.skillIds) || resource.skillIds.some(id => typeof id !== 'string')) return false;
+    seen.add(resource.id);
+    next.push({
+      id: resource.id, title: resource.title!, provider: resource.provider!, url: resource.url!,
+      skillIds: [...resource.skillIds], level: resource.level!, duration: resource.duration!,
+      access: resource.access!, language: resource.language!,
+    });
+  }
+  learningResources.splice(0, learningResources.length, ...next);
+  learningResourceIds.clear();
+  for (const resource of next) learningResourceIds.add(resource.id);
+  catalogVersion++;
+  catalogListeners.forEach(listener => listener());
+  return true;
 }

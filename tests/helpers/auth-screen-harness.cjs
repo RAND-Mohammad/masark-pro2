@@ -28,6 +28,20 @@ module.exports = function harness(file, { provider = false, session = null, getS
     updateUser: async args => { calls.update.push(args); return { data: { user: fixture.user }, error: null }; },
   };
   const depsChanged = (old, next) => !old || !next || old.length !== next.length || old.some((v, i) => !Object.is(v, next[i]));
+  const testStorage = new Map();
+  const storageApi = {
+    getItem: async key => testStorage.get(key) ?? null,
+    setItem: async (key, value) => { testStorage.set(key, value); },
+    removeItem: async key => { testStorage.delete(key); },
+    multiGet: async keys => keys.map(key => [key, testStorage.get(key) ?? null]),
+    multiSet: async pairs => { for (const [key, value] of pairs) testStorage.set(key, value); },
+    multiRemove: async keys => { for (const key of keys) testStorage.delete(key); },
+    getAllKeys: async () => [...testStorage.keys()], clear: async () => testStorage.clear(),
+  };
+  const preferences = { language: 'ar', theme: 'light', effectiveTheme: 'light', ready: true,
+    setLanguage(value) { preferences.language = value; dirty = true; },
+    setTheme(value) { preferences.theme = value; dirty = true; } };
+  class AdminRequestError extends Error { constructor(message, status) { super(message); this.status = status; } }
   const react = {
     useState(initial) {
       const i = cursor++;
@@ -74,10 +88,13 @@ module.exports = function harness(file, { provider = false, session = null, getS
       Text: 'Text', TextInput: 'TextInput', View: 'View' },
     'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     '../contexts/auth-context': { useAuth: () => auth },
+    '../contexts/app-preferences-context': { useAppPreferences: () => preferences },
+    '../utils/admin-api': { AdminRequestError, adminRequest: async () => { throw new AdminRequestError('هذا الحساب غير مخول للوصول إلى لوحة الإدارة.', 403); } },
+    '@react-native-async-storage/async-storage': { default: storageApi },
     '../utils/supabase': { authConfigured: true, supabase: { auth: api } },
     '../utils/scoped-storage': { setDataOwner: owner => owners.push(owner) },
     '../utils/auth-redirect': { authRedirectUrl: () => 'https://app.example.test/auth-callback' },
-    '../constants/design': { colors: {}, ui: {} },
+    '../constants/design': { colors: {}, ui: {}, createAdaptiveStyles: factory => factory() },
     '../components/masarak-brand': { MasarakBrand: 'MasarakBrand' },
     '../components/masarak-icon': { MasarakIcon: 'MasarakIcon' },
   };

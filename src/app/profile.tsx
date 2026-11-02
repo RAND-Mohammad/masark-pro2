@@ -1,81 +1,127 @@
-import { useState } from 'react';
-import { useAuth } from '../contexts/auth-context';
-import { authErrorMessage } from '../utils/auth-errors';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, ui } from '../constants/design';
 import { MasarakIcon } from '../components/masarak-icon';
-import { useSkillProfile } from '../hooks/use-skill-profile';
-import { saveManualSkills } from '../utils/skill-profile';
-import dataset from '../masarak_dataset.json';
-import { PersonalProfileForm } from '../components/personal-profile-form';
-import { CvQualificationReview } from '../components/cv-qualification-review';
-import { CloudCard } from '../components/cloud-card';
+import { colors, createAdaptiveStyles, ui } from '../constants/design';
+import { useAppPreferences } from '../contexts/app-preferences-context';
+import { useAuth } from '../contexts/auth-context';
 import { usePersonalProfile } from '../hooks/use-personal-profile';
-import { ProfileEntryChoices } from '../components/profile-entry-choices';
-import { DisclosureCard } from '../components/disclosure-card';
+import { useSkillProfile } from '../hooks/use-skill-profile';
+import { getCareerMatches } from '../utils/career-matching';
+import { careerTitles } from '../utils/career-matches';
+import { resolveBaseCareerId } from '../constants/job-paths';
 
-const skills = dataset.skills.filter(skill => dataset.career_skills.some(link => link.skill_id === skill.skill_id));
 export default function ProfileScreen() {
   const router = useRouter();
   const auth = useAuth();
-  const { personal } = usePersonalProfile();
-  const [confirmSignOut, setConfirmSignOut] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-  const [accountError, setAccountError] = useState('');
-  const displayName = personal?.name || (typeof auth.session?.user.user_metadata?.display_name === 'string' ? auth.session.user.user_metadata.display_name.trim().slice(0, 80) : 'ملفك المهني');
-  async function leaveAccount() {
-    setSigningOut(true); setAccountError('');
-    try { await auth.signOut(); router.replace('/'); }
-    catch (failure) { setAccountError(authErrorMessage(failure)); }
-    finally { setSigningOut(false); }
-  }
-  const { profile, ready, error, setProfile } = useSkillProfile();
-  const [editing, setEditing] = useState(false);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [search, setSearch] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  async function save() {
-    setBusy(true);
-    setSaveError('');
-    try { const updated = await saveManualSkills(selected); setProfile(updated); setEditing(false); setSearch(''); }
-    catch { setSaveError('تعذر حفظ التعديلات. جرّب مرة أخرى.'); }
-    finally { setBusy(false); }
-  }
-  const visible = skills.filter(skill => skill.name.toLowerCase().includes(search.trim().toLowerCase()));
-  const stats = [
-    { title: 'مهارات مرتبطة', count: profile?.skill_ids.length ?? 0 },
-    { title: 'شهادات ودورات', count: profile?.cv?.certificates.length ?? 0 },
-    { title: 'مشاريع', count: profile?.cv?.projects?.length ?? 0 },
-  ];
-  return <SafeAreaView edges={['top', 'left', 'right']} style={ui.screen}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={ui.content}>
-    <Text style={ui.eyebrow}>رحلتك، بطريقتك</Text><Text style={ui.title}>ملفي</Text>
-    <View style={styles.header}><View style={styles.avatar}><MasarakIcon name="profile" size={32} /></View><Text style={ui.heading}>{auth.session ? displayName : 'ملفك المهني'}</Text><Text style={ui.note}>{auth.session?.user.email ?? 'تستخدم مسارك دون حساب'}</Text></View>
-    {!ready ? <Text style={ui.text}>جارٍ تحميل ملفك…</Text> : error ? <Text style={styles.error}>{error}</Text> : <>
-    <ProfileEntryChoices />
-    <PersonalProfileForm />
-    <CvQualificationReview />
-    <Pressable accessibilityRole="link" onPress={() => router.push('/privacy')}><Text style={ui.link}>الخصوصية والحفظ وحدود الخدمات / Privacy</Text></Pressable>
-      <CloudCard />
-    {profile?.cv && <Pressable accessibilityRole="button" style={ui.outline} onPress={() => router.push('/resume-preview')}><Text style={ui.outlineText}>معاينة سيرتي / تصدير PDF</Text></Pressable>}
-      <View style={styles.stats}>{stats.map(stat => <View key={stat.title} style={styles.stat}><Text style={styles.count}>{stat.count}</Text><Text style={styles.statTitle}>{stat.title}</Text></View>)}</View>
-      <Pressable accessibilityRole="button" style={ui.card} onPress={() => router.push('/upload-cv')}><View style={ui.row}><Text style={ui.heading}>سيرتي الذاتية</Text><MasarakIcon name="upload" /></View><Text style={ui.text}>{profile?.cv ? 'التحليل المعتمد محفوظ. يمكنك مراجعة السيرة أو إعادة تحليلها.' : 'ارفع سيرتك واستخرج مهاراتك وخبراتك.'}</Text><Text style={ui.link}>فتح السيرة ←</Text></Pressable>
-      <DisclosureCard title="مهاراتي" subtitle="مهارات السيرة والمهارات اليدوية" summary={`${profile?.skill_ids.length ?? 0} مهارة مرتبطة بالمسارات`} status={profile?.manual_skill_ids.length ? `${profile.manual_skill_ids.length} يدوية` : 'مراجعة'} actionLabel={!editing ? 'إضافة' : undefined} onAction={() => { setSelected(profile?.manual_skill_ids ?? []); setEditing(true); }}>
-        <Text style={ui.text}>مهارات السيرة تدخل تلقائيًا. الإضافات اليدوية مستقلة عنها ولا تعدّل السيرة.</Text>
-        {editing && <><Text style={ui.heading}>أضيفي مهاراتك</Text><Text style={ui.note}>المحدد يدويًا: {selected.length}</Text><TextInput accessibilityLabel="البحث عن مهارة" placeholder="ابحث باسم المهارة بالإنجليزية" placeholderTextColor={colors.muted} style={ui.input} value={search} onChangeText={setSearch} editable={!busy} />
-        {visible.length === 0 && <Text style={ui.text}>لا توجد مهارات تطابق البحث.</Text>}
-        {visible.map(skill => { const checked = selected.includes(skill.skill_id); return <Pressable key={skill.skill_id} accessibilityRole="checkbox" accessibilityState={{ checked, disabled: busy }} disabled={busy} style={[styles.skill, checked && styles.selected]} onPress={() => setSelected(previous => checked ? previous.filter(id => id !== skill.skill_id) : [...previous, skill.skill_id])}><Text style={styles.skillName}>{checked ? '✓ ' : ''}{skill.name}</Text><Text style={styles.skillDescription}>{skill.description}</Text></Pressable>; })}
-        {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => void save()} style={[ui.button, busy && ui.pressed]}><Text style={ui.buttonText}>{busy ? 'جارٍ الحفظ…' : 'حفظ المهارات'}</Text></Pressable>
-        <Pressable accessibilityRole="button" disabled={busy} onPress={() => setEditing(false)} style={ui.outline}><Text style={ui.outlineText}>إغلاق التعديل</Text></Pressable></>}
-      </DisclosureCard>
-      <Pressable accessibilityRole="button" style={ui.card} onPress={() => router.push('/learning-plan')}><View style={ui.row}><Text style={ui.heading}>خطة تعلمي</Text><MasarakIcon name="plan" /></View><Text style={ui.text}>مهارات وشهادات وخبرات ومشاريع اخترت تطويرها، مع الأولوية ونسبة التقدم.</Text></Pressable>
-    </>}
-    {auth.session ? <DisclosureCard title="إعدادات الحساب" subtitle="كلمة المرور وتسجيل الخروج" summary={auth.session.user.email ?? 'الحساب متصل'} status="متصل" statusTone="success"><Text style={ui.text}>ملف هذا الحساب مستقل عن ملف الضيف. حالة النسخة السحابية تظهر في بطاقة الحفظ أعلاه.</Text><Pressable accessibilityRole="button" disabled={signingOut} onPress={() => router.push('/reset-password')}><Text style={ui.link}>تغيير كلمة المرور</Text></Pressable>{confirmSignOut ? <><Text style={ui.text}>تريد تسجيل الخروج؟ بيانات الحساب تبقى محفوظة على الجهاز، ويعود التطبيق إلى وضع الضيف.</Text><Pressable accessibilityRole="button" disabled={signingOut} onPress={() => void leaveAccount()} style={ui.outline}><Text style={ui.outlineText}>{signingOut ? 'جارٍ تسجيل الخروج…' : 'تأكيد تسجيل الخروج'}</Text></Pressable><Pressable accessibilityRole="button" disabled={signingOut} onPress={() => setConfirmSignOut(false)}><Text style={ui.link}>إلغاء</Text></Pressable></> : <Pressable accessibilityRole="button" onPress={() => setConfirmSignOut(true)}><Text style={ui.link}>تسجيل الخروج</Text></Pressable>}{accountError ? <Text style={styles.error}>{accountError}</Text> : null}</DisclosureCard> : <Pressable accessibilityRole="button" style={ui.outline} onPress={() => router.push({ pathname: '/account', params: { mode: 'login' } })}><Text style={ui.outlineText}>تسجيل الدخول أو إنشاء حساب</Text></Pressable>}
-    <Pressable accessibilityRole="button" onPress={() => router.replace('/')}><Text style={ui.link}>العودة لشاشة البداية</Text></Pressable>
-    <Text style={ui.note}>العربية والإنجليزية قريبًا. تُحفظ بيانات حسابك تلقائياً بعد تسجيل الدخول، وتبقى التغييرات على الجهاز عند انقطاع الاتصال حتى مزامنتها. بيانات الضيف محلية ومنفصلة.</Text>
-  </ScrollView></SafeAreaView>;
+  const { language } = useAppPreferences();
+  const en = language === 'en';
+  const text = (ar: string, english: string) => en ? english : ar;
+  const personalState = usePersonalProfile();
+  const profileState = useSkillProfile();
+  const matches = getCareerMatches({ skillProfile: profileState.profile, personal: personalState.personal });
+  const requestedGoal = personalState.personal?.careerGoal;
+  const career = requestedGoal
+    ? matches.find(item => item.career_id === requestedGoal || resolveBaseCareerId(item.career_id) === resolveBaseCareerId(requestedGoal)) ?? matches[0]
+    : matches[0];
+  const savedName = personalState.personal?.name.trim()
+    || (typeof auth.session?.user.user_metadata?.display_name === 'string' ? auth.session.user.user_metadata.display_name.trim() : '');
+  const name = savedName || text('ملفي المهني', 'Professional profile');
+  const initials = name.trim().split(/\s+/).slice(0, 2).map(part => part[0]?.toLocaleUpperCase() ?? '').join('') || 'M';
+  const studentSummary = [personalState.personal?.studyStatus, personalState.personal?.major, personalState.personal?.city]
+    .map(value => value?.trim()).filter(Boolean).join(' · ');
+  const educationSummary = [
+    personalState.personal?.institution?.trim(),
+    personalState.personal?.graduationYear ? text(`دفعة ${personalState.personal.graduationYear}`, `Class of ${personalState.personal.graduationYear}`) : '',
+  ].filter(Boolean).join(' · ');
+  const reviewedSkills = profileState.profile?.skill_ids.length ?? 0;
+  const hasCv = Boolean(profileState.profile?.cv);
+  return <SafeAreaView edges={['top', 'left', 'right']} style={ui.screen}>
+    <ScrollView contentContainerStyle={styles.content}>
+      <View style={styles.profileHeader}>
+        <Pressable accessibilityRole="button" accessibilityLabel={text('الإعدادات', 'Settings')} onPress={() => router.push('/settings' as never)} style={styles.settingsButton}><MasarakIcon name="settings" /></Pressable>
+        <View style={styles.avatar}><Text style={styles.initials}>{initials}</Text></View>
+        <Text style={[styles.name, en && styles.ltr]}>{name}</Text>
+        <Text style={[styles.email, en && styles.ltr]}>{auth.session?.user.email ?? text('تستخدم مسارك دون حساب', 'Using Masarak without an account')}</Text>
+        {studentSummary ? <Text style={[styles.academic, en && styles.ltr]}>{studentSummary}</Text> : null}
+        {educationSummary ? <Text style={[styles.educationSummary, en && styles.ltr]}>{educationSummary}</Text> : null}
+      </View>
+
+      {!personalState.ready || !profileState.ready ? <View style={ui.card}><Text style={[ui.text, en && styles.ltr]}>{text('جارٍ تحميل ملفك…', 'Loading your profile…')}</Text></View> : null}
+      {personalState.error || profileState.error ? <View style={styles.errorCard}><Text accessibilityRole="alert" style={[styles.error, en && styles.ltr]}>{personalState.error || profileState.error}</Text></View> : null}
+
+      {personalState.ready && profileState.ready && !personalState.error && !profileState.error ? <>
+        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/readiness', params: career ? { id: career.career_id } : {} } as never)} style={({ pressed }) => [styles.direction, pressed && ui.pressed]}>
+          <View style={styles.directionTop}>
+            <Text style={[styles.directionLabel, en && styles.ltr]}>{text('مساري المهني', 'MY CAREER DIRECTION')}</Text>
+            <Text style={styles.directionAction}>{text('عرض الجاهزية ←', 'Readiness →')}</Text>
+          </View>
+          <View style={[styles.directionContent, en && styles.directionLtr]}>
+            <View style={styles.directionCopy}>
+              <Text style={[styles.directionTitle, en && styles.ltr]}>{career ? (en ? career.title : careerTitles[career.career_id] ?? career.title) : text('اختاري مسارًا', 'Choose a path')}</Text>
+              <Text style={[styles.directionNote, en && styles.ltr]}>{text('افتحي تفاصيل الجاهزية', 'OPEN READINESS DETAILS')}</Text>
+            </View>
+          </View>
+        </Pressable>
+
+        <View style={styles.actionsCard}>
+          <ProfileRow icon="profile" title={text('تعديل الملف الشخصي', 'Edit profile')} subtitle={text('المعلومات الشخصية والتعليمية', 'Personal and academic details')} onPress={() => router.push('/edit-profile' as never)} english={en} />
+          <ProfileRow icon="upload" title={text('سيرتي ومهاراتي المراجعة', 'My CV & reviewed skills')} subtitle={hasCv ? text(`${reviewedSkills} مهارات موثقة · راجعي أو حدّثي السيرة`, `${reviewedSkills} reviewed skills · review or update your CV`) : text('ارفعِي سيرة اختيارية أو أضيفي معلوماتك يدويًا', 'Upload an optional CV or add your information manually')} onPress={() => router.push('/upload-cv' as never)} english={en} />
+          <ProfileRow icon="careers" title={text('هدفي المهني', 'My career goal')} subtitle={career ? (en ? `Explore or change · ${career.title}` : `استكشفي أو غيّري · ${careerTitles[career.career_id] ?? career.title}`) : text('استكشفي المسارات أو حددي هدفًا', 'Explore paths or choose a goal')} onPress={() => router.push({ pathname: '/choose-goal', params: { source: 'profile' } } as never)} english={en} last />
+        </View>
+
+        <View style={[styles.footerLinks, en && styles.footerLinksLtr]}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/settings' as never)} style={styles.footerLink}><MasarakIcon name="settings" size={15} /><Text style={styles.footerText}>{text('الإعدادات', 'Settings')}</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/privacy' as never)} style={styles.footerLink}><MasarakIcon name="profile" size={15} /><Text style={styles.footerText}>{text('الخصوصية والبيانات', 'Privacy & data')}</Text></Pressable>
+        </View>
+        <Text style={[ui.note, en && styles.ltr]}>{text('ملفك خاص. حدّثي معلوماتك بعد اكتساب دليل جديد.', 'Your profile is private. Update it when you have new evidence.')}</Text>
+        {!auth.session ? <Pressable accessibilityRole="button" style={ui.outline} onPress={() => router.push({ pathname: '/account', params: { mode: 'login' } })}><Text style={ui.outlineText}>{text('تسجيل الدخول لمزامنة بيانات حسابك', 'Sign in to sync account data')}</Text></Pressable> : null}
+      </> : null}
+    </ScrollView>
+  </SafeAreaView>;
 }
-const styles = StyleSheet.create({ header: { alignItems: 'center', paddingVertical: 18, gap: 10 }, avatar: { padding: 24, borderRadius: 45, backgroundColor: colors.mint }, stats: { flexDirection: 'row-reverse', backgroundColor: colors.surface, borderRadius: 20, borderWidth: 1, borderColor: colors.border, paddingVertical: 20 }, stat: { flex: 1, alignItems: 'center', gap: 6 }, count: { color: colors.primary, fontSize: 25, fontWeight: '700' }, statTitle: { color: colors.muted, fontSize: 11, textAlign: 'center' }, skill: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.soft, borderRadius: 14, padding: 16, gap: 8 }, selected: { backgroundColor: colors.mint, borderColor: colors.primary }, skillName: { color: colors.ink, fontSize: 16, fontWeight: '600' }, skillDescription: { color: colors.muted, fontSize: 13, lineHeight: 22 }, error: { color: colors.error, fontSize: 14, lineHeight: 23, textAlign: 'right' } });
+
+function ProfileRow({ icon, title, subtitle, onPress, english, last = false }: { icon: 'profile' | 'upload' | 'careers'; title: string; subtitle: string; onPress: () => void; english: boolean; last?: boolean }) {
+  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.row, english && styles.rowLtr, !last && styles.rowBorder, pressed && ui.pressed]}>
+    <View style={styles.rowIcon}><MasarakIcon name={icon} color={colors.primary} size={19} /></View>
+    <View style={styles.rowCopy}><Text style={[styles.rowTitle, english && styles.ltr]}>{title}</Text><Text style={[styles.rowSubtitle, english && styles.ltr]}>{subtitle}</Text></View>
+    <Text style={styles.chevron}>{english ? '›' : '‹'}</Text>
+  </Pressable>;
+}
+
+const styles = createAdaptiveStyles(() => ({
+  content: { width: '100%', maxWidth: 620, alignSelf: 'center', padding: 22, paddingBottom: 28, gap: 16 },
+  profileHeader: { alignItems: 'center', gap: 5, paddingTop: 6, paddingBottom: 8 },
+  settingsButton: { alignSelf: 'flex-end', width: 40, height: 40, borderRadius: 14, backgroundColor: colors.mint, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.mint, alignItems: 'center', justifyContent: 'center', marginTop: -28, marginBottom: 5 },
+  initials: { color: colors.primary, fontSize: 24, fontWeight: '800' },
+  name: { color: colors.ink, fontSize: 23, fontWeight: '800', textAlign: 'center' },
+  email: { color: colors.muted, fontSize: 14, textAlign: 'center' },
+  academic: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: 2 },
+  educationSummary: { color: colors.muted, fontSize: 11, textAlign: 'center' },
+  direction: { backgroundColor: colors.contrastPanel, borderRadius: 20, padding: 18, gap: 13 },
+  directionTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+  directionLabel: { color: colors.contrastOnPanel, opacity: 0.78, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textAlign: 'right' },
+  directionAction: { color: colors.contrastAccent, fontSize: 11, fontWeight: '700' },
+  directionContent: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  directionLtr: { flexDirection: 'row' },
+  directionCopy: { flex: 1, gap: 5 },
+  directionTitle: { color: colors.contrastOnPanel, fontSize: 20, lineHeight: 26, fontWeight: '800', textAlign: 'right' },
+  directionNote: { color: colors.contrastOnPanel, opacity: 0.78, fontSize: 11, lineHeight: 17, fontWeight: '600', textAlign: 'right' },
+  actionsCard: { backgroundColor: colors.surface, borderRadius: 19, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 15 },
+  row: { minHeight: 76, flexDirection: 'row-reverse', alignItems: 'center', gap: 11, paddingVertical: 12 },
+  rowLtr: { flexDirection: 'row' },
+  rowBorder: { borderBottomWidth: 1, borderColor: colors.border },
+  rowIcon: { width: 38, height: 38, borderRadius: 13, backgroundColor: colors.mint, alignItems: 'center', justifyContent: 'center' },
+  rowCopy: { flex: 1, gap: 3 },
+  rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '700', textAlign: 'right' },
+  rowSubtitle: { color: colors.muted, fontSize: 11, lineHeight: 17, textAlign: 'right' },
+  chevron: { color: colors.muted, fontSize: 23, lineHeight: 26 },
+  footerLinks: { flexDirection: 'row-reverse', gap: 16, flexWrap: 'wrap' },
+  footerLinksLtr: { flexDirection: 'row' },
+  footerLink: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, minHeight: 32 },
+  footerText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  errorCard: { backgroundColor: colors.errorSurface, borderColor: colors.errorBorder, borderWidth: 1, borderRadius: 16, padding: 14 },
+  error: { color: colors.error, fontSize: 13, lineHeight: 20, textAlign: 'right' },
+  ltr: { textAlign: 'left', writingDirection: 'ltr' },
+}));

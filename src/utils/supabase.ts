@@ -10,6 +10,12 @@ export const supabase = authConfigured ? createClient(url, key, {
   auth: { storage: authStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, flowType: 'implicit' },
 }) : null;
 
+export async function clearStoredAuthSession(): Promise<void> {
+  if (!supabase) return;
+  const projectRef = new URL(url).hostname.split('.')[0];
+  await authStorage.removeItem(`sb-${projectRef}-auth-token`);
+}
+
 // A request keeps its original identity even if the global SDK session changes mid-flight.
 let requestClientNumber = 0;
 export function createAccountClient(session: import('@supabase/supabase-js').Session, parentSignal?: AbortSignal) {

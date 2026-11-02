@@ -3,6 +3,8 @@ export function createCvSessionGuard({
   url = process.env.EXPO_PUBLIC_SUPABASE_URL,
   key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   fetchImpl = fetch,
+  allowDeletionInProgress = false,
+  checkDeletionInProgress = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()),
 } = {}) {
   const projectUrl = url?.trim().replace(/\/$/, '');
   const publicKey = key?.trim();
@@ -27,6 +29,23 @@ export function createCvSessionGuard({
       if (!response.ok) throw new Error('Auth unavailable');
       const user = await response.json();
       if (!user || typeof user.id !== 'string' || !user.id.trim()) throw new Error('Invalid Auth response');
+      if (checkDeletionInProgress) {
+        const deletionStatus = await fetchImpl(`${projectUrl}/rest/v1/masarak_account_deletions?select=user_id&user_id=eq.${encodeURIComponent(user.id)}`, {
+          method: 'GET',
+          headers: { apikey: publicKey, Authorization: `Bearer ${match[1]}` },
+          signal: AbortSignal.timeout(5000),
+          redirect: 'error',
+          cache: 'no-store',
+        });
+        // A missing table means the account-erasure migration is not installed;
+        // the delete endpoint then refuses to begin and no lock can exist.
+        if (deletionStatus.status !== 404) {
+          if (!deletionStatus.ok) throw new Error('Account status unavailable');
+          const rows = await deletionStatus.json();
+          if (!Array.isArray(rows)) throw new Error('Invalid account status');
+          if (rows.length > 0 && !allowDeletionInProgress) return res.status(403).json({ error: 'حذف الحساب جارٍ. أعيدي المحاولة من شاشة حذف الحساب لإكمال العملية.' });
+        }
+      }
       // Only the identity returned by Supabase is trusted; client user_id is ignored.
       res.locals.cvUser = { id: user.id };
       return next();

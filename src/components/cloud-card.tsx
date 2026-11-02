@@ -20,7 +20,7 @@ export function CloudCard({ language = 'ar' }: { language?: 'ar' | 'en' } = {}) 
     : saved ? t('تم تأكيد حفظ بيانات حسابك في السحابة.', 'Your account data was confirmed saved in the cloud.')
     : t('تغييرات الحساب محفوظة على الجهاز. تُعاد محاولة المزامنة تلقائياً عند عودة الاتصال.', 'Account changes stay on this device. Sync retries automatically when connectivity returns.');
   return <DisclosureCard title={t('الحفظ التلقائي', 'Automatic saving')} subtitle={t('نسخة خاصة بحسابك', 'Private account copy')} summary={summary} status={status} statusTone={saved ? 'success' : 'neutral'}>
-    <Text style={[ui.text, direction]}>{t('تُسترجع بيانات الحساب قبل مزامنة تغييراتك تلقائياً مع Supabase. تبقى بيانات الضيف منفصلة على الجهاز.', 'Account data is restored before changes sync automatically with Supabase. Guest data stays separate on this device.')}</Text>
+    <Text style={[ui.text, direction]}>{t('تُسترجع بيانات الحساب قبل مزامنة تغييراتك تلقائياً. تبقى بيانات الضيف منفصلة على هذا الجهاز.', 'Your account data is restored before changes sync automatically. Guest data stays separate on this device.')}</Text>
     {cloud.busy && <ActivityIndicator color={colors.primary} />}
     <Text style={[ui.note, direction]}>{status}</Text>
     {!!cloud.lastSynced && <Text style={[ui.note, direction]}>{t('آخر مزامنة مؤكدة:', 'Last confirmed sync:')} {new Date(cloud.lastSynced).toLocaleString(language === 'en' ? 'en-US' : 'ar-SA')}</Text>}

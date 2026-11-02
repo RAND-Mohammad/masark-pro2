@@ -13,8 +13,10 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 2. Start the app
 
    ```bash
-   npx expo start
+   npm start
    ```
+
+The start command runs Expo and the local Node.js API together, so CV analysis, jobs, and admin requests are available. Keep this terminal open. Use `npm run web` for the web app or `npm run android` for Android. On a phone, use the same Wi-Fi as the computer.
 
 In the output, you'll find options to open the app in a
 

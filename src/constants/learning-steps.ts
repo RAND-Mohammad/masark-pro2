@@ -184,3 +184,48 @@ export function getLearningSteps(name: string): string[] {
   const normalized = name.replace(/\s+/g, ' ').trim();
   return learningSteps[normalized] ?? generalSteps;
 }
+
+export function getLearningStepsEnglish(name: string): string[] {
+  const skill = name.replace(/\s+/g, ' ').trim();
+  const normalized = skill.toLowerCase();
+  if (/machine learning|artificial intelligence|prediction model|natural language|deep learning/.test(normalized)) {
+    return [
+      `Review the core concepts behind ${skill}, including how training and evaluation work.`,
+      'Build a small, reproducible example with separate training and test data and a simple baseline.',
+      'Evaluate the result with a suitable metric, inspect mistakes, and document assumptions and limitations.',
+    ];
+  }
+  if (/data|analytics|statistic|visuali|reporting/.test(normalized)) {
+    return [
+      `Review the main workflow and quality checks used in ${skill}.`,
+      'Apply the workflow to a small public or synthetic dataset, keeping the original data unchanged.',
+      'Summarize the results with a clear chart or table and document decisions, assumptions, and limitations.',
+    ];
+  }
+  if (/database|sql/.test(normalized)) {
+    return [
+      `Review the concepts and safe practices used in ${skill}.`,
+      'Create a small sample database and practice queries, constraints, and permissions using synthetic data.',
+      'Verify the results, keep a backup where relevant, and document the schema and important queries.',
+    ];
+  }
+  if (/security|cryptograph|vulnerabilit|incident|risk|identity/.test(normalized)) {
+    return [
+      `Review the core concepts and authorized-use boundaries for ${skill}.`,
+      'Practice only in a local lab or environment you are explicitly authorized to use, and record evidence.',
+      'Explain the finding, impact, and recommended action, then verify the result and document limitations.',
+    ];
+  }
+  if (/network|cloud|system|server|linux|infrastructure/.test(normalized)) {
+    return [
+      `Review the main concepts, tools, and safety checks used in ${skill}.`,
+      'Build a small isolated lab, apply one configuration or troubleshooting task, and record what changed.',
+      'Verify connectivity or service behavior, document the steps, and explain how to restore the prior state.',
+    ];
+  }
+  return [
+    `Review the fundamentals and typical workflow for ${skill}.`,
+    'Apply the skill in a small project with a clear goal and keep evidence of your work.',
+    'Check the result, explain your decisions, and note what you would improve next.',
+  ];
+}

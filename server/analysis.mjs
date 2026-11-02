@@ -5,7 +5,7 @@ import { findSourceExcerpt } from './evidence-match.mjs';
 import { recoverListedSkills } from './skill-list-recovery.mjs';
 import { createSkillMatcher, normalizeSkillName } from '../src/utils/skill-matching.mjs';
 import { extractLocalSections, isLiteralSkillName, inferProject, localSectionHeading } from './local-resume.mjs';
-import { inferStudyStatus, isDescription, isStudyStatusSupported } from './resume-field-rules.mjs';
+import { hasAmbiguousEducationPair, inferStudyStatus, isDescription, isStudyStatusSupported } from './resume-field-rules.mjs';
 import { CV_PARSER_VERSION } from '../src/utils/cv-parser-version.mjs';
 import { associatedRecordQuote, verifyFieldProvenance } from './cv-provenance.mjs';
 
@@ -334,8 +334,12 @@ export function validateAnalysis(value, source) {
       if (!item || !keys.every(key => typeof item[key] === 'string' && item[key].length <= 3000)) throw new CvError('نتيجة التحليل غير مكتملة. حاول مجددًا.', 502);
       const label = section === 'experiences' ? item.role : item.name;
       const labelExcerpt = label.trim() ? findSourceExcerpt(scopedVisibleSource, label) : null;
+      const ambiguousEducationRow = section === 'education' && label.trim() && sectionText.split('\n').some(row => {
+        const plainRow = plainLayoutText(row).trim();
+        return plainRow && findSourceExcerpt(plainRow, label) && hasAmbiguousEducationPair(row);
+      });
       const quote = associatedRecordQuote(section, item, sectionText, localRecords)
-        ?? (['education', 'projects', 'activities', 'certificates', 'courses', 'unclassified'].includes(section) ? labelExcerpt : null);
+        ?? (!ambiguousEducationRow && ['education', 'projects', 'activities', 'certificates', 'courses', 'unclassified'].includes(section) ? labelExcerpt : null);
       if (!label.trim() || !labelExcerpt || !quote || !findSourceExcerpt(quote, label)) { dropped++; continue; }
       const safe = Object.fromEntries(keys.map(key => [key, item[key].trim()]));
       const extras = section === 'education' ? ['college', 'major', 'study_status', 'gpa'] : section === 'projects' ? ['role', 'category', 'category_basis', 'category_evidence'] : section === 'experiences' ? ['location'] : [];

@@ -21,6 +21,20 @@ export function academicFact(value) {
   if (/\b(?:college|faculty)\b|كلية/iu.test(value) && !/\b(?:university|institute|school)\b|جامعة|معهد/iu.test(value)) return 'college';
   return null;
 }
+export function hasAmbiguousEducationPair(value) {
+  return value.split(/\r?\n/u).some(line => {
+    const columns = line.replace(/^\[[PD]\d+L\d+(?: y=\d+)?\]\s*/u, '')
+      .split(/\s+\|\s+(?=\(x=\d+\))/u);
+    if (columns.length > 1) {
+      const facts = columns.map(part => academicFact(part.replace(/^\(x=\d+\)\s*/u, '').trim()));
+      if (facts.includes('name') && facts.some(fact => ['organization', 'college'].includes(fact))) return true;
+    }
+    const parts = line.split(/\s*[,،;؛]\s*/u);
+    const degrees = parts.filter(part => academicFact(part) === 'name').length;
+    const institutions = parts.filter(part => ['organization', 'college'].includes(academicFact(part))).length;
+    return degrees > 0 && institutions > 1;
+  });
+}
 export function combinedEducationFacts(value) {
   // Split explicit degree/institution pairs in one unambiguous PDF cell.
   // A trailing pipe-delimited year range is part of the same education record.
@@ -34,10 +48,12 @@ export function combinedEducationFacts(value) {
   if (!parts) {
     const commaParts = education.split(/\s*[,،;؛]\s*/u);
     if (commaParts.length >= 2) {
-      const degreeIndex = commaParts.findIndex(part => academicFact(part) === 'name');
-      const institutionIndex = commaParts.findIndex((part, index) => index !== degreeIndex
-        && ['organization', 'college'].includes(academicFact(part)));
-      if (degreeIndex >= 0 && institutionIndex >= 0) {
+      const degreeIndexes = commaParts.map((part, index) => academicFact(part) === 'name' ? index : -1).filter(index => index >= 0);
+      const institutionIndexes = commaParts.map((part, index) => ['organization', 'college'].includes(academicFact(part)) ? index : -1).filter(index => index >= 0);
+      const [degreeIndex] = degreeIndexes;
+      const [institutionIndex] = institutionIndexes;
+      // A degree plus two institutions in one row cannot be safely paired.
+      if (degreeIndexes.length === 1 && institutionIndexes.length === 1) {
         const nameEnd = Math.max(degreeIndex, institutionIndex);
         const nameStart = Math.min(degreeIndex, institutionIndex);
         if (nameStart === degreeIndex && nameEnd > degreeIndex) parts = [

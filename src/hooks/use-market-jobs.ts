@@ -6,7 +6,7 @@ import { captureDataScope } from '../utils/scoped-storage';
 
 const shared = new Map<string, { until: number; request: Promise<MarketDataset>; assertCurrent: () => void }>();
 export type MarketDataset = { jobs: MarketJob[]; groupIds: Record<string, string[]>; snapshots: string[]; fetchedAt: string; partial: boolean; hasMore: boolean };
-async function loadMarket(account: string): Promise<MarketDataset> {
+async function loadMarket(account: string, english: boolean): Promise<MarketDataset> {
   const scope = captureDataScope();
   if (scope.owner !== account) throw new Error('تغيّر الحساب أثناء جلب الوظائف.');
   const key = scope.key('market-jobs');
@@ -14,10 +14,14 @@ async function loadMarket(account: string): Promise<MarketDataset> {
   if (cached && cached.until > Date.now()) {
     try { cached.assertCurrent(); return cached.request; } catch { shared.delete(key); }
   }
-  const request = Promise.allSettled(jobCategories.map(item => getMarketJobs(item.id))).then(results => {
+  const request = Promise.allSettled(jobCategories.map(item => getMarketJobs(item.id, english))).then(results => {
     scope.assertCurrent();
     const success = results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []) as JobsResult[];
-    if (!success.length) throw new Error('تعذر تحميل إعلانات الوظائف. تأكد من تشغيل السيرفر ثم أعد المحاولة.');
+    if (!success.length) {
+      const failure = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')?.reason;
+      // أظهر سبب الاتصال أو الخدمة الذي أعادته الواجهة بدل إخفائه خلف رسالة عامة.
+      throw new Error(failure instanceof Error && failure.message ? failure.message : 'تعذر تحميل إعلانات الوظائف. تأكد من تشغيل خادم مسارك ثم أعد المحاولة.');
+    }
     const jobs = new Map<string, MarketJob>();
     for (const group of success) for (const job of group.jobs) jobs.set(job.id, job);
     return { jobs: [...jobs.values()], groupIds: Object.fromEntries(success.map(result => [result.category, result.jobs.map(job => job.id)])), snapshots: [...new Set(success.map(result => result.sourceSnapshotAt))].sort(),
@@ -28,7 +32,7 @@ async function loadMarket(account: string): Promise<MarketDataset> {
   if (shared.size > 8) for (const candidate of shared.keys()) if (candidate !== key) { shared.delete(candidate); break; }
   try { return await request; } catch (error) { if (shared.get(key)?.request === request) shared.delete(key); throw error; }
 }
-export function useMarketJobs() {
+export function useMarketJobs(english = false) {
   const auth = useAuth();
   const account = auth.session?.user.id;
   const [state, setState] = useState<{ account: string; data: MarketDataset | null; error: string } | null>(null);
@@ -38,12 +42,12 @@ export function useMarketJobs() {
     if (!auth.ready || !account) return;
     const request = ++revision.current;
     try {
-      const data = await loadMarket(account);
+      const data = await loadMarket(account, english);
       if (active.current && request === revision.current) setState({ account, data, error: '' });
     } catch (error) {
       if (active.current && request === revision.current) setState({ account, data: null, error: error instanceof Error ? error.message : 'تعذر جلب الوظائف.' });
     }
-  }, [auth.ready, account]);
+  }, [auth.ready, account, english]);
   useFocusEffect(useCallback(() => {
     active.current = true;
     void refresh();

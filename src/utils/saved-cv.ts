@@ -67,6 +67,8 @@ export function deleteSavedCv(): Promise<void> {
       if (file.exists) file.delete();
     }
     await AsyncStorage.removeItem(key);
+    const directory = cvDirectory();
+    if (directory.exists) directory.delete();
   });
 }
 

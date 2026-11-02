@@ -17,6 +17,8 @@ export function calculateCareerScore(careerId: string, ids: string[] | null) {
     missingCore: core.filter(row => !owned.has(row.skill_id)),
     matchedAdditional: additional.filter(row => owned.has(row.skill_id)),
     missingAdditional: additional.filter(row => !owned.has(row.skill_id)),
-    score: ids === null || core.length === 0 ? null : Math.round(100 * matchedCore.reduce((sum, row) => sum + ('weight' in row && typeof row.weight === 'number' ? row.weight : 1), 0) / core.reduce((sum, row) => sum + ('weight' in row && typeof row.weight === 'number' ? row.weight : 1), 0)),
+    // The report defines readiness as a count of documented core skills, so
+    // optional rank weights must not change the percentage.
+    score: ids === null || core.length === 0 ? null : Math.round(100 * matchedCore.length / core.length),
   };
 }

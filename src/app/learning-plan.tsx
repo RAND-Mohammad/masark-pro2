@@ -1,8 +1,9 @@
+import { colors, createAdaptiveStyles } from '../constants/design';
 import { useRouter } from 'expo-router';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import dataset from '../masarak_dataset.json';
-import { getLearningSteps } from '../constants/learning-steps';
+import { getLearningSteps, getLearningStepsEnglish } from '../constants/learning-steps';
 import { getLearningResources } from '../constants/learning-resources';
 import { useLearningPlan } from '../hooks/use-learning-plan';
 import { useLearningProgress } from '../hooks/use-learning-progress';
@@ -10,8 +11,9 @@ import { useSkillProfile } from '../hooks/use-skill-profile';
 import { usePersonalProfile } from '../hooks/use-personal-profile';
 import { useProfessionalCertifications } from '../hooks/use-professional-certifications';
 import { jobPathById } from '../constants/job-paths';
+import { careerTitles } from '../utils/career-matches';
 import { jobPathRequirementProfile, requirementsForCareerPath } from '../constants/job-path-requirements';
-import { certificationsByIds } from '../constants/professional-certifications';
+import { certificationsByIds, professionalCertificationCopy } from '../constants/professional-certifications';
 import { displaySkillName } from '../utils/skill-labels';
 import { certificationPlanId, experiencePlanId, projectPlanId } from '../utils/learning-plan';
 import { isRelevantEvidence } from '../utils/evidence-keywords';
@@ -21,16 +23,21 @@ import { useJobTarget } from '../hooks/use-job-target';
 import { useMarketJobs } from '../hooks/use-market-jobs';
 import { matchMarketJob } from '../utils/job-matching';
 import { JobGapPlan } from '../components/job-gap-plan';
+import { useLearningResources } from '../hooks/use-learning-resources';
+import { useAppPreferences } from '../contexts/app-preferences-context';
 
 export default function LearningPlanScreen() {
+  useLearningResources();
   const router = useRouter();
+  const { language } = useAppPreferences(); const en = language === 'en';
+  const t = (ar: string, english: string) => en ? english : ar;
   const learning = useLearningPlan();
   const courseProgress = useLearningProgress();
   const profileState = useSkillProfile();
   const personalState = usePersonalProfile();
   const certificationState = useProfessionalCertifications();
   const targetState = useJobTarget();
-  const market = useMarketJobs();
+  const market = useMarketJobs(en);
   const targetJob = targetState.target ? market.data?.jobs.find(job => job.id === targetState.target!.job.id) ?? targetState.target.job : null;
   const targetMatch = targetJob && profileState.ready && personalState.ready && !profileState.error && !personalState.error ? matchMarketJob(targetJob, profileState.profile, personalState.personal) : null;
   const selectedPath = jobPathById(personalState.personal?.careerGoal);
@@ -65,113 +72,114 @@ export default function LearningPlanScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/home')}>
-          <Text style={styles.link}>العودة</Text>
+          <Text style={[styles.link, en && styles.ltr]}>{t('العودة', 'Back')}</Text>
         </Pressable>
-        <Text style={styles.title}>خطة تعلمي</Text>
-        {targetMatch ? <><Text style={styles.heading}>هدفك من إعلانات الوظائف</Text><Text style={styles.note}>التوافق الحالي: {targetMatch.score === null ? 'غير محسوب' : `${targetMatch.score}%`}. تتغير المقارنة مع تحديث ملفك؛ إكمال الدورات وحده لا يثبت المهارة.</Text>
-          {!market.data?.jobs.some(job => job.id === targetJob?.id) ? <Text style={styles.note}>نعرض نسخة إعلانك المحفوظة؛ لم يظهر في العينة الحالية. هذا لا يثبت إغلاقه، راجع المصدر.</Text> : null}
-          <JobGapPlan match={targetMatch} /><Pressable accessibilityRole="button" onPress={() => router.push('/jobs')}><Text style={styles.link}>راجع الوظيفة وتحديثاتها أو غيّر هدفك</Text></Pressable></> : null}
+        <View style={[styles.headerRow, en && styles.headerRowLtr]}><Text style={[styles.title, en && styles.ltr]}>{t('خطة تعلمي', 'My learning plan')}</Text><Pressable accessibilityRole="button" onPress={() => router.push('/progress' as never)}><Text style={[styles.link, en && styles.ltr]}>{t('تقدّمي ←', 'Progress →')}</Text></Pressable></View>
+        {targetMatch ? <><Text style={[styles.heading, en && styles.ltr]}>{t('هدفك من إعلانات الوظائف', 'Your target job')}</Text><Text style={[styles.note, en && styles.ltr]}>{t('التوافق الحالي:', 'Current match:')} {targetMatch.score === null ? t('غير محسوب', 'not calculated') : `${targetMatch.score}%`}. {t('تتغير المقارنة مع تحديث ملفك؛ إكمال الدورات وحده لا يثبت المهارة.', 'The match changes when your profile changes; completing courses alone does not prove a skill.')}</Text>
+          {!market.data?.jobs.some(job => job.id === targetJob?.id) ? <Text style={[styles.note, en && styles.ltr]}>{t('نعرض نسخة إعلانك المحفوظة؛ لم يظهر في العينة الحالية. هذا لا يثبت إغلاقه، راجع المصدر.', 'Showing the saved listing; it is not in the current sample. This does not prove it has closed. Check the source.')}</Text> : null}
+          <JobGapPlan match={targetMatch} /><Pressable accessibilityRole="button" onPress={() => router.push('/jobs')}><Text style={[styles.link, en && styles.ltr]}>{t('راجع الوظيفة وتحديثاتها أو غيّر هدفك', 'Review the job, updates, or change your target')}</Text></Pressable></> : null}
         {targetState.error ? <Text style={styles.note}>{targetState.error}</Text> : null}
         <DataSourceNotice />
-        <Text style={styles.note}>النسب تمثل إكمال العناصر بإقرارك أو وجود دليل مرتبط، ولا تختبر إتقانك. الإضافة إلى الخطة لا تمنح أي تقدم. المسار المقترح يبنى من الفجوات ولا يحذف خططك السابقة.</Text>
+        <Text style={[styles.note, en && styles.ltr]}>{t('النسب تمثل إكمال العناصر بإقرارك أو وجود دليل مرتبط، ولا تختبر إتقانك. الإضافة إلى الخطة لا تمنح أي تقدم. المسار المقترح يبنى من الفجوات ولا يحذف خططك السابقة.', 'Progress reflects self-reported completion or linked evidence; it does not test proficiency. Adding an item does not increase progress. Suggested paths use your gaps and keep your existing plan.')}</Text>
         {profileState.error ? <Text style={styles.note}>{profileState.error}</Text> : null}
-        <Text style={styles.text}>الخطة مفصّلة إلى مهارات، شهادة مهنية اختيارية، مؤهل جامعي، وخبرة عملية. كل قسم يُحسب مستقلًا في الجاهزية.</Text>
+        <Text style={[styles.text, en && styles.ltr]}>{t('الخطة تجمع مهارات ومشاريع وخبرة وشهادات اختيارية بحسب هدفك. تقدّم العناصر لا يغيّر نسبة تغطية المهارات تلقائيًا.', 'Your plan groups skills, projects, experience and optional certifications for your goal. Progress does not automatically change skill coverage.')}</Text>
         {!selectedPath ? (
           <View style={styles.card}>
-            <Text style={styles.heading}>حددي هدفك الوظيفي أولًا</Text>
-            <Text style={styles.text}>اختاري مسمى وظيفيًا من «بياناتي» حتى نعرض الشهادة والخبرة والمشاريع الخاصة به.</Text>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/profile')}><Text style={styles.link}>فتح بياناتي</Text></Pressable>
+            <Text style={[styles.heading, en && styles.ltr]}>{t('حددي هدفك الوظيفي أولًا', 'Choose a career goal first')}</Text>
+            <Text style={[styles.text, en && styles.ltr]}>{t('اختاري مسمى وظيفيًا من «بياناتي» حتى نعرض الشهادة والخبرة والمشاريع الخاصة به.', 'Choose a role in your profile to see its certifications, experience and project suggestions.')}</Text>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/profile')}><Text style={[styles.link, en && styles.ltr]}>{t('فتح بياناتي', 'Open my profile')}</Text></Pressable>
           </View>
         ) : roleProfile ? (
           <>
             <View style={styles.card}>
-              <Text style={styles.heading}>هدفك: {selectedPath.title}</Text>
+              <Text style={[styles.heading, en && styles.ltr]}>{t('هدفك:', 'Your goal:')} {en ? selectedPath.title : careerTitles[selectedPath.id] ?? selectedPath.title}</Text>
               <Text style={styles.progressNumber}>{overallProgress}%</Text>
               <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${overallProgress}%` }]} /></View>
-              <Text style={styles.note}>تقدم خطتك: {progressItems.length} عناصر مختارة. هذه النسبة تقيس الإنجاز والدليل، وليست اختبارًا لمستوى الاحتراف.</Text>
+              <Text style={[styles.note, en && styles.ltr]}>{en ? `Plan progress: ${progressItems.length} selected items. This reflects completion and evidence, not proficiency.` : `تقدم خطتك: ${progressItems.length} عناصر مختارة. هذه النسبة تقيس الإنجاز والدليل، وليست اختبارًا لمستوى الاحتراف.`}</Text>
             </View>
-            <DisclosureCard title="المؤهل الجامعي" subtitle="المعلومات المطلوبة للمسار" summary={roleProfile.education} status="متطلب أساسي">
-              <Text style={styles.text}>{roleProfile.education}</Text>
-              <Text style={styles.note}>هذا البند يُقرأ من تخصصك ومؤهلك ومعدلك في «بياناتي». لا تضيفيه كمهارة أو شهادة مهنية.</Text>
+            <DisclosureCard title={t('المؤهل الجامعي', 'Education')} subtitle={t('المعلومات المطلوبة للمسار', 'Requirements for this path')} summary={en ? roleProfile.educationEn : roleProfile.education} status={t('متطلب أساسي', 'Core requirement')}>
+              <Text style={[styles.text, en && styles.ltr]}>{en ? roleProfile.educationEn : roleProfile.education}</Text>
+              <Text style={[styles.note, en && styles.ltr]}>{t('هذا البند يُقرأ من تخصصك ومؤهلك ومعدلك في «بياناتي». لا تضيفيه كمهارة أو شهادة مهنية.', 'This uses your major, qualification and GPA from your profile. Do not add it as a skill or professional certification.')}</Text>
             </DisclosureCard>
-            <DisclosureCard title="الشهادات المهنية" subtitle="اختيارية" summary={plannedCertifications.length ? `${plannedCertifications.length} شهادة في الخطة` : 'لا توجد شهادة في الخطة'} status={plannedCertifications.length ? 'للتعلم' : 'اختياري'} statusTone={plannedCertifications.length ? 'warning' : 'neutral'}>
-              <Text style={styles.note}>{roleCertifications.length ? 'يكفي اختيار الشهادة الأنسب لبيئة العمل المستهدفة. لا يلزم جمع جميع الخيارات، ولا تضعي علامة إلا بعد صدور الشهادة باسمك.' : 'لا توجد شهادة مهنية عامة ذات أولوية للخريج في هذا المسار؛ ركزي على المهارات والمشروع.'}</Text>
+            <DisclosureCard title={t('الشهادات المهنية', 'Professional certifications')} subtitle={t('اختيارية', 'Optional')} summary={plannedCertifications.length ? `${plannedCertifications.length} ${t('شهادة في الخطة', 'certifications in your plan')}` : t('لا توجد شهادة في الخطة', 'No certification in plan')} status={plannedCertifications.length ? t('للتعلم', 'Planned') : t('اختياري', 'Optional')} statusTone={plannedCertifications.length ? 'warning' : 'neutral'}>
+              <Text style={[styles.note, en && styles.ltr]}>{roleCertifications.length ? t('يكفي اختيار الشهادة الأنسب لبيئة العمل المستهدفة. لا يلزم جمع جميع الخيارات، ولا تضعي علامة إلا بعد صدور الشهادة باسمك.', 'Choose the certification best suited to your target environment. You do not need all options; mark it earned only after it is issued in your name.') : t('لا توجد شهادة مهنية عامة ذات أولوية للخريج في هذا المسار؛ ركزي على المهارات والمشروع.', 'No general certification is a priority for this entry-level path; focus on skills and projects.')}</Text>
               {certificationState.error ? <Text style={styles.note}>{certificationState.error}</Text> : null}
-              {plannedCertifications.length === 0 ? <Text style={styles.note}>لم تضيفي شهادة مهنية إلى خطتك. أضيفي الأنسب من صفحة تفاصيل المسار أو الـRoadmap.</Text> : null}
+              {plannedCertifications.length === 0 ? <Text style={[styles.note, en && styles.ltr]}>{t('لم تضيفي شهادة مهنية إلى خطتك. أضيفي الأنسب من صفحة تفاصيل المسار أو الـRoadmap.', 'No professional certification is in your plan. Add one from the path details or roadmap.')}</Text> : null}
               {plannedCertifications.map(certificate => {
                 const achieved = certificationState.achieved.includes(certificate.id);
+                const display = professionalCertificationCopy(certificate, en);
                 return <View key={certificate.id} style={styles.resource}>
-                  <Text style={styles.resourceTitle}>{certificate.title}</Text>
-                  <Text style={styles.note}>{certificate.provider} · {certificate.level}</Text>
-                  <Text style={styles.note}>{certificate.cost}</Text>
-                  <Text style={styles.note}>{certificate.note}</Text>
-                  <Text style={styles.progressLabel}>{achieved ? 'مكتملة بإقرارك · 100%' : 'مخطط لها · 0%'}</Text>
+                  <Text style={[styles.resourceTitle, en && styles.ltr]}>{display.title}</Text>
+                  <Text style={[styles.note, en && styles.ltr]}>{display.provider} · {display.level}</Text>
+                  <Text style={[styles.note, en && styles.ltr]}>{display.cost}</Text>
+                  <Text style={[styles.note, en && styles.ltr]}>{display.note}</Text>
+                  <Text style={[styles.progressLabel, en && styles.ltr]}>{achieved ? t('مكتملة بإقرارك · 100%', 'Marked complete · 100%') : t('مخطط لها · 0%', 'Planned · 0%')}</Text>
                   <View style={styles.progressTrack}><View style={[styles.progressFill, { width: achieved ? '100%' : '0%' }]} /></View>
-                  <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(certificate.url)}><Text style={styles.link}>صفحة الشهادة الرسمية</Text></Pressable>
-                  <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: achieved, disabled: !certificationState.ready || certificationState.busy }} disabled={!certificationState.ready || certificationState.busy} style={[styles.checkButton, achieved && styles.checkButtonDone]} onPress={() => void certificationState.change(certificate.id, !achieved)}><Text style={styles.checkText}>{achieved ? '✓ حصلت على الشهادة' : '□ حصلت على الشهادة'}</Text></Pressable>
-                  <Pressable accessibilityRole="button" onPress={() => void learning.change(certificationPlanId(certificate.id), false)}><Text style={styles.link}>إزالة الشهادة من خطتي</Text></Pressable>
+                  <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(certificate.url)}><Text style={[styles.link, en && styles.ltr]}>{t('صفحة الشهادة الرسمية', 'Official certification page')}</Text></Pressable>
+                  <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: achieved, disabled: !certificationState.ready || certificationState.busy }} disabled={!certificationState.ready || certificationState.busy} style={[styles.checkButton, achieved && styles.checkButtonDone]} onPress={() => void certificationState.change(certificate.id, !achieved)}><Text style={styles.checkText}>{achieved ? `✓ ${t('حصلت على الشهادة', 'Certification earned')}` : `□ ${t('حصلت على الشهادة', 'Mark as earned')}`}</Text></Pressable>
+                  <Pressable accessibilityRole="button" onPress={() => void learning.change(certificationPlanId(certificate.id), false)}><Text style={[styles.link, en && styles.ltr]}>{t('إزالة الشهادة من خطتي', 'Remove certification from plan')}</Text></Pressable>
                 </View>;
               })}
             </DisclosureCard>
-            <DisclosureCard title="الخبرة والمشاريع" subtitle="تطبيق عملي للمسار" summary={`${hasPlannedExperience ? 'خبرة واحدة' : 'دون خبرة'} · ${plannedProjects.length} مشاريع`} status={hasPlannedExperience || plannedProjects.length ? 'في الخطة' : 'اختياري'} statusTone={hasPlannedExperience || plannedProjects.length ? 'warning' : 'neutral'}>
-              {!hasPlannedExperience && plannedProjects.length === 0 ? <Text style={styles.note}>لم تضيفي خبرة أو مشروعًا إلى خطتك. اختاريها من تفاصيل المسار أو الـRoadmap.</Text> : null}
-              {hasPlannedExperience ? <View style={styles.resource}><Text style={styles.resourceTitle}>الخبرة العملية المستهدفة</Text><Text style={styles.text}>{roleProfile.experience}</Text><Text style={styles.progressLabel}>{relevantExperiences ? 'ظهر دليل مرتبط في سيرتك · 100%' : 'مخطط لها · 0%'}</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: relevantExperiences ? '100%' : '0%' }]} /></View><Pressable onPress={() => void learning.change(experiencePlanId(selectedPath.id), false)}><Text style={styles.link}>إزالة الخبرة من خطتي</Text></Pressable></View> : null}
-              {plannedProjects.map(({ project, index }) => <View key={project} style={styles.resource}><Text style={styles.resourceTitle}>مشروع تطبيقي</Text><Text style={styles.text}>• {project}</Text><Text style={styles.progressLabel}>{relevantProjects > index ? 'ظهر دليل مرتبط في سيرتك · 100%' : 'مخطط له · 0%'}</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: relevantProjects > index ? '100%' : '0%' }]} /></View><Pressable onPress={() => void learning.change(projectPlanId(selectedPath.id, index), false)}><Text style={styles.link}>إزالة المشروع من خطتي</Text></Pressable></View>)}
-              <Text style={styles.note}>أنجزي المشروع ثم اكتبيه داخل السيرة أو الخبرات وأعيدي تحليلها؛ عندها فقط يستطيع التطبيق احتساب دليله للمسار.</Text>
-              <Pressable accessibilityRole="button" onPress={() => router.push('/upload-cv')}><Text style={styles.link}>تحديث السيرة وإعادة التحليل</Text></Pressable>
+            <DisclosureCard title={t('الخبرة والمشاريع', 'Experience and projects')} subtitle={t('تطبيق عملي للمسار', 'Practical work for your path')} summary={`${hasPlannedExperience ? t('خبرة واحدة', 'One experience item') : t('دون خبرة', 'No experience item')} · ${plannedProjects.length} ${t('مشاريع', 'projects')}`} status={hasPlannedExperience || plannedProjects.length ? t('في الخطة', 'In plan') : t('اختياري', 'Optional')} statusTone={hasPlannedExperience || plannedProjects.length ? 'warning' : 'neutral'}>
+              {!hasPlannedExperience && plannedProjects.length === 0 ? <Text style={[styles.note, en && styles.ltr]}>{t('لم تضيفي خبرة أو مشروعًا إلى خطتك. اختاريها من تفاصيل المسار أو الـRoadmap.', 'No experience or project is in your plan. Add one from path details or the roadmap.')}</Text> : null}
+              {hasPlannedExperience ? <View style={styles.resource}><Text style={[styles.resourceTitle, en && styles.ltr]}>{t('الخبرة العملية المستهدفة', 'Suggested experience')}</Text><Text style={[styles.text, en && styles.ltr]}>{en ? roleProfile.experienceEn : roleProfile.experience}</Text><Text style={[styles.progressLabel, en && styles.ltr]}>{relevantExperiences ? t('ظهر دليل مرتبط في سيرتك · 100%', 'Related CV evidence found · 100%') : t('مخطط لها · 0%', 'Planned · 0%')}</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: relevantExperiences ? '100%' : '0%' }]} /></View><Pressable onPress={() => void learning.change(experiencePlanId(selectedPath.id), false)}><Text style={[styles.link, en && styles.ltr]}>{t('إزالة الخبرة من خطتي', 'Remove experience from plan')}</Text></Pressable></View> : null}
+              {plannedProjects.map(({ project, index }) => <View key={index} style={styles.resource}><Text style={[styles.resourceTitle, en && styles.ltr]}>{t('مشروع تطبيقي', 'Practical project')}</Text><Text style={[styles.text, en && styles.ltr]}>• {en ? roleProfile.projectsEn[index] : project}</Text><Text style={[styles.progressLabel, en && styles.ltr]}>{relevantProjects > index ? t('ظهر دليل مرتبط في سيرتك · 100%', 'Related CV evidence found · 100%') : t('مخطط له · 0%', 'Planned · 0%')}</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: relevantProjects > index ? '100%' : '0%' }]} /></View><Pressable onPress={() => void learning.change(projectPlanId(selectedPath.id, index), false)}><Text style={[styles.link, en && styles.ltr]}>{t('إزالة المشروع من خطتي', 'Remove project from plan')}</Text></Pressable></View>)}
+              <Text style={[styles.note, en && styles.ltr]}>{t('أنجزي المشروع ثم اكتبيه داخل السيرة أو الخبرات وأعيدي تحليلها؛ عندها فقط يستطيع التطبيق احتساب دليله للمسار.', 'Complete the project, document it in your CV or experience, then reanalyze the CV. The app can count evidence for this path only after that.')}</Text>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/upload-cv')}><Text style={[styles.link, en && styles.ltr]}>{t('تحديث السيرة وإعادة التحليل', 'Update CV and reanalyze')}</Text></Pressable>
             </DisclosureCard>
-            <Text style={styles.heading}>4. المهارات والدورات</Text>
+            <Text style={[styles.heading, en && styles.ltr]}>4. {t('المهارات والدورات', 'Skills and courses')}</Text>
           </>
         ) : null}
         {learning.error ? (
           <Pressable accessibilityRole="button" onPress={() => void learning.reload()}>
-            <Text style={styles.note}>{learning.error} اضغط لإعادة التحميل.</Text>
+            <Text style={[styles.note, en && styles.ltr]}>{learning.error} {t('اضغط لإعادة التحميل.', 'Tap to reload.')}</Text>
           </Pressable>
         ) : null}
         {courseProgress.error ? (
           <Pressable accessibilityRole="button" onPress={() => void courseProgress.reload()}>
-            <Text style={styles.note}>{courseProgress.error} اضغط لإعادة التحميل.</Text>
+            <Text style={[styles.note, en && styles.ltr]}>{courseProgress.error} {t('اضغط لإعادة التحميل.', 'Tap to reload.')}</Text>
           </Pressable>
         ) : null}
         {!learning.ready ? (
-          !learning.error ? <Text style={styles.text}>جارٍ تحميل خطة تعلمك…</Text> : null
+          !learning.error ? <Text style={[styles.text, en && styles.ltr]}>{t('جارٍ تحميل خطة تعلمك…', 'Loading your learning plan…')}</Text> : null
         ) : progressItems.length === 0 ? (
           <View style={styles.card}>
-            <Text style={styles.heading}>خطتك فارغة حاليًا</Text>
-            <Text style={styles.text}>افتح تفاصيل وظيفة، ثم خطوات التعلم المقترحة، واضغط «أضف إلى خطة تعلمي» عند المهارة التي تريد تطويرها.</Text>
+            <Text style={[styles.heading, en && styles.ltr]}>{t('خطتك فارغة حاليًا', 'Your plan is empty')}</Text>
+            <Text style={[styles.text, en && styles.ltr]}>{t('افتح تفاصيل وظيفة، ثم خطوات التعلم المقترحة، واضغط «أضف إلى خطة تعلمي» عند المهارة التي تريد تطويرها.', 'Open a career path, view its learning steps, then add the skills you want to develop to your plan.')}</Text>
             <Pressable accessibilityRole="button" onPress={() => router.replace('/home')}>
-              <Text style={styles.link}>استكشف المسارات</Text>
+              <Text style={[styles.link, en && styles.ltr]}>{t('استكشف المسارات', 'Explore career paths')}</Text>
             </Pressable>
           </View>
         ) : (
           <>
-            <Text style={styles.heading}>مهارات اخترت تطويرها: {skills.length}</Text>
+            <Text style={[styles.heading, en && styles.ltr]}>{t('مهارات اخترت تطويرها:', 'Skills in your plan:')} {skills.length}</Text>
             {skills.map((skill) => {
               const resources = getLearningResources(skill.skill_id);
               const progress = skillProgress(skill.skill_id);
               const row = requirements.find(item => item.skill_id === skill.skill_id);
               const priority = row && 'priority_rank' in row ? row.priority_rank : null;
               return (
-              <DisclosureCard key={skill.skill_id} title={displaySkillName(skill.name)} subtitle={resources.length ? `${resources.length} موارد للتعلم` : 'خطوات تطبيقية'} summary={`${progress === 100 ? 'موثقة في ملفك' : progress >= 60 ? 'قيد التطبيق' : 'مبتدئ'} · ${progress}%${priority ? ` · أولوية ${priority}` : ''}`} status={`${progress}%`} statusTone={progress === 100 ? 'success' : 'neutral'}>
-                <Text style={styles.progressLabel}>{progress === 100 ? 'موثقة في ملفك' : progress >= 60 ? 'قيد التطبيق' : 'مبتدئ'} · {progress}%{priority ? ` · أولوية ${priority}` : ''}</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${progress}%` }]} /></View>
-                {profileState.ready && !profileState.error && profileState.profile?.skill_ids.includes(skill.skill_id) ? <Text style={styles.note}>✓ أصبحت ضمن مهارات ملفك المعتمد. يمكنك إبقاؤها للتدريب أو إزالتها من الخطة.</Text> : null}
-                {getLearningSteps(skill.name).map((step, index) => (
-                  <Text key={index} style={styles.text}>{index + 1}. {step}</Text>
+              <DisclosureCard key={skill.skill_id} title={en ? skill.name : displaySkillName(skill.name)} subtitle={resources.length ? `${resources.length} ${t('موارد للتعلم', 'learning resources')}` : t('خطوات تطبيقية', 'Practice steps')} summary={`${progress === 100 ? t('موثقة في ملفك', 'In profile') : progress >= 60 ? t('قيد التطبيق', 'In progress') : t('مبتدئ', 'Getting started')} · ${progress}%${priority ? ` · ${t('أولوية', 'Priority')} ${priority}` : ''}`} status={`${progress}%`} statusTone={progress === 100 ? 'success' : 'neutral'}>
+                <Text style={[styles.progressLabel, en && styles.ltr]}>{progress === 100 ? t('موثقة في ملفك', 'Documented in profile') : progress >= 60 ? t('قيد التطبيق', 'In progress') : t('مبتدئ', 'Getting started')} · {progress}%{priority ? ` · ${t('أولوية', 'Priority')} ${priority}` : ''}</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${progress}%` }]} /></View>
+                {profileState.ready && !profileState.error && profileState.profile?.skill_ids.includes(skill.skill_id) ? <Text style={[styles.note, en && styles.ltr]}>✓ {t('أصبحت ضمن مهارات ملفك المعتمد. يمكنك إبقاؤها للتدريب أو إزالتها من الخطة.', 'This is now in your approved profile. Keep it for practice or remove it from the plan.')}</Text> : null}
+                {(en ? getLearningStepsEnglish(skill.name) : getLearningSteps(skill.name)).map((step, index) => (
+                  <Text key={index} style={[styles.text, en && styles.ltr]}>{index + 1}. {step}</Text>
                 ))}
-                <Text style={styles.subheading}>دورات وموارد مرتبطة</Text>
+                <Text style={[styles.subheading, en && styles.ltr]}>{t('دورات وموارد مرتبطة', 'Related courses and resources')}</Text>
                 {resources.length === 0 ? (
-                  <Text style={styles.note}>لم نراجع موردًا محددًا لهذه المهارة بعد.</Text>
+                  <Text style={[styles.note, en && styles.ltr]}>{t('لم نراجع موردًا محددًا لهذه المهارة بعد.', 'No resource has been reviewed for this skill yet.')}</Text>
                 ) : resources.map(resource => {
                   const completed = Boolean(courseProgress.progress[resource.id]);
                   return (
                     <View key={resource.id} style={styles.resource}>
-                      <Text style={styles.resourceTitle}>{resource.title}</Text>
+                      <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/course-details' as never, params: { id: resource.id } } as never)}><Text style={[styles.resourceTitle, en && styles.ltr]}>{resource.title} · {t('التفاصيل', 'Details')}</Text></Pressable>
                       <Text style={styles.note}>{resource.provider} · {resource.level}</Text>
                       <Text style={styles.note}>{resource.duration}</Text>
                       <Text style={styles.note}>{resource.access}</Text>
                       <Text style={styles.note}>{resource.language}</Text>
                       <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(resource.url)}>
-                        <Text style={styles.link}>فتح صفحة المورد الرسمية</Text>
+                        <Text style={[styles.link, en && styles.ltr]}>{t('فتح صفحة المورد الرسمية', 'Open official resource page')}</Text>
                       </Pressable>
                       <Pressable
                         accessibilityRole="checkbox"
@@ -179,7 +187,7 @@ export default function LearningPlanScreen() {
                         disabled={!courseProgress.ready || courseProgress.busy}
                         style={[styles.checkButton, completed && styles.checkButtonDone]}
                         onPress={() => void courseProgress.change(resource.id, !completed)}>
-                        <Text style={styles.checkText}>{completed ? '✓ أكملت هذا المورد' : '□ وضع علامة كمكتمل'}</Text>
+                        <Text style={styles.checkText}>{completed ? `✓ ${t('أكملت هذا المورد', 'Marked complete')}` : `□ ${t('وضع علامة كمكتمل', 'Mark complete')}`}</Text>
                       </Pressable>
                     </View>
                   );
@@ -187,11 +195,11 @@ export default function LearningPlanScreen() {
                 <Pressable accessibilityRole="button" disabled={learning.busy}
                   accessibilityState={{ disabled: learning.busy }}
                   onPress={() => void learning.change(skill.skill_id, false)}>
-                  <Text style={styles.link}>{learning.busy ? 'جارٍ الحفظ…' : 'إزالة من خطة تعلمي'}</Text>
+                  <Text style={[styles.link, en && styles.ltr]}>{learning.busy ? t('جارٍ الحفظ…', 'Saving…') : t('إزالة من خطة تعلمي', 'Remove from my plan')}</Text>
                 </Pressable>
               </DisclosureCard>
             );})}
-            <Text style={styles.note}>إنجاز المورد يرفع جزء التعلم المحدود في الجاهزية المركبة، لكنه لا يضيف المهارة تلقائيًا. بعد التطبيق العملي، راجع دليلك ثم حدّث ملف مهاراتك بنفسك ليرتفع جزء المهارات.</Text>
+            <Text style={[styles.note, en && styles.ltr]}>{t('إنجاز المورد يُسجّل في تقدّم التعلم، لكنه لا يضيف المهارة تلقائيًا إلى نسبة تغطيتها. بعد التطبيق العملي، راجع دليلك ثم حدّث ملف مهاراتك بنفسك.', 'Completing a resource updates learning progress but does not automatically add the skill to coverage. After practice, review your evidence and update your profile.')}</Text>
           </>
         )}
       </ScrollView>
@@ -199,8 +207,8 @@ export default function LearningPlanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#F8F9F5' },
+const styles = createAdaptiveStyles(() => ({
+    screen: { flex: 1, backgroundColor: colors.background },
     content: {
         width: '100%',
         maxWidth: 650,
@@ -210,58 +218,61 @@ const styles = StyleSheet.create({
         gap: 20,
     },
     title: {
-        color: '#12635E',
+        color: colors.primary,
         fontSize: 28,
         fontWeight: '700',
         textAlign: 'right',
     },
     heading: {
-        color: '#12635E',
+        color: colors.primary,
         fontSize: 18,
         textAlign: 'right',
     },
-    subheading: { color: '#193C3B', fontSize: 17, fontWeight: '700', textAlign: 'right', marginTop: 6 },
+    subheading: { color: colors.ink, fontSize: 17, fontWeight: '700', textAlign: 'right', marginTop: 6 },
     card: {
-        backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE6E0',
+        backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
         padding: 22,
         borderRadius: 18,
         gap: 14,
     },
     skill: {
-        color: '#193C3B',
+        color: colors.ink,
         fontSize: 20,
         fontWeight: '600',
     },
     english: {
-        color: '#617570',
+        color: colors.muted,
         fontSize: 15,
         lineHeight: 25,
     },
     text: {
-        color: '#425F57',
+        color: colors.muted,
         fontSize: 16,
         lineHeight: 28,
         textAlign: 'right',
     },
     link: {
-        color: '#12635E',
+        color: colors.primary,
         fontSize: 17,
         paddingVertical: 10,
         textAlign: 'right',
     },
     note: {
-        color: '#617570',
+        color: colors.muted,
         fontSize: 14,
         lineHeight: 24,
         textAlign: 'right',
     },
-    resource: { backgroundColor: '#F8F9F5', borderWidth: 1, borderColor: '#DDE6E0', borderRadius: 14, padding: 16, gap: 6 },
-    resourceTitle: { color: '#193C3B', fontSize: 17, fontWeight: '700', textAlign: 'right' },
-    checkButton: { borderWidth: 1, borderColor: '#12635E', borderRadius: 12, padding: 12, minHeight: 46, justifyContent: 'center' },
-    checkButtonDone: { backgroundColor: '#E5F3EE' },
-    checkText: { color: '#12635E', fontSize: 15, fontWeight: '600', textAlign: 'center' },
-    progressNumber: { color: '#12635E', fontSize: 32, fontWeight: '800', textAlign: 'right' },
-    progressLabel: { color: '#12635E', fontSize: 15, fontWeight: '700', textAlign: 'right' },
-    progressTrack: { height: 10, backgroundColor: '#E2E8E3', borderRadius: 999, overflow: 'hidden' },
-    progressFill: { height: '100%', backgroundColor: '#12635E', borderRadius: 999 },
-});
+    resource: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16, gap: 6 },
+    resourceTitle: { color: colors.ink, fontSize: 17, fontWeight: '700', textAlign: 'right' },
+    checkButton: { borderWidth: 1, borderColor: colors.primary, borderRadius: 12, padding: 12, minHeight: 46, justifyContent: 'center' },
+    checkButtonDone: { backgroundColor: colors.mint },
+    checkText: { color: colors.primary, fontSize: 15, fontWeight: '600', textAlign: 'center' },
+    progressNumber: { color: colors.primary, fontSize: 32, fontWeight: '800', textAlign: 'right' },
+    progressLabel: { color: colors.primary, fontSize: 15, fontWeight: '700', textAlign: 'right' },
+    progressTrack: { height: 10, backgroundColor: colors.track, borderRadius: 999, overflow: 'hidden' },
+    progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 999 },
+    headerRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+    headerRowLtr: { flexDirection: 'row' },
+    ltr: { textAlign: 'left', writingDirection: 'ltr' },
+}));

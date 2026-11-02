@@ -3,7 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { useAuth } from '../contexts/auth-context';
 import { interviewQuestions } from '../data/interview-bank.mjs';
 import type { InterviewResult } from '../utils/interview-types';
-import { getInterviewQuestions, evaluateInterviewAnswer } from '../utils/interview-api';
+import { generateInterviewQuestions as generateInterviewQuestionSet, getInterviewQuestions, evaluateInterviewAnswer, type InterviewPracticeType } from '../utils/interview-api';
 import { readInterviewHistory, saveInterviewResult, removeInterviewResult } from '../utils/interview-history';
 import { captureDataScope } from '../utils/scoped-storage';
 
@@ -13,25 +13,42 @@ export function useInterview(careerId: string, language: 'ar' | 'en') {
   const [history, setHistory] = useState<InterviewResult[]>([]);
   const [result, setResult] = useState<InterviewResult | null>(null);
   const [aiConfigured, setAiConfigured] = useState(false);
+  const [questionSource, setQuestionSource] = useState<'curated-practice' | 'groq-adaptive'>('curated-practice');
+  const [generatedType, setGeneratedType] = useState<InterviewPracticeType | null>(null);
   const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const active = useRef(false); const locked = useRef(false);
   useFocusEffect(useCallback(() => {
     active.current = true; const scope = captureDataScope();
     let current = true;
-    setLoading(true); setError(''); setResult(null); setAiConfigured(false); setQuestions(interviewQuestions(careerId, language));
+    setLoading(true); setError(''); setResult(null); setAiConfigured(false); setQuestions(interviewQuestions(careerId, language)); setQuestionSource('curated-practice'); setGeneratedType(null);
     void (async () => {
       try {
         const saved = await readInterviewHistory(); scope.assertCurrent();
         if (current) setHistory(saved);
         if (session) {
           const available = await getInterviewQuestions(careerId, language); scope.assertCurrent();
-          if (current) { setQuestions(available.questions); setAiConfigured(available.aiConfigured); }
+          if (current) { setQuestions(available.questions); setAiConfigured(available.aiConfigured); setQuestionSource('curated-practice'); }
         }
       } catch { if (current) setError('تعذر تحميل السجل أو الاتصال بالخادم. الأسئلة المعروضة محلية؛ أعد فتح الصفحة للمحاولة. / History or server unavailable. Questions are a local preview; reopen to retry.'); }
       finally { if (current) setLoading(false); }
     })();
     return () => { current = false; active.current = false; };
   }, [careerId, language, session]));
+  async function generate(type: InterviewPracticeType, consent: boolean) {
+    if (locked.current) return false;
+    if (!session) { if (active.current) setError('سجّل الدخول لتوليد الأسئلة. / Sign in to generate questions.'); return false; }
+    if (!aiConfigured) { if (active.current) setError('خدمة توليد الأسئلة غير مهيأة؛ استخدم الأسئلة المنتقاة. / AI generation is unavailable; use the curated questions.'); return false; }
+    const scope = captureDataScope();
+    locked.current = true; setBusy(true); setError('');
+    try {
+      const generated = await generateInterviewQuestionSet(careerId, language, type, consent); scope.assertCurrent();
+      if (active.current) { setQuestions(generated); setQuestionSource('groq-adaptive'); setGeneratedType(type); setResult(null); }
+      return true;
+    } catch (failure) {
+      if (active.current) setError(failure instanceof Error ? failure.message : 'تعذر توليد الأسئلة. / Could not generate questions.');
+      return false;
+    } finally { locked.current = false; if (active.current) setBusy(false); }
+  }
   async function submit(questionId: string, answer: string, useAi: boolean, consent: boolean) {
     if (locked.current) return;
     const scope = captureDataScope();
@@ -52,5 +69,5 @@ export function useInterview(careerId: string, language: 'ar' | 'en') {
     } catch { if (active.current) setError('تعذر حذف النتيجة. / Could not remove result.'); }
     finally { locked.current = false; if (active.current) setBusy(false); }
   }
-  return { questions, history, result, aiConfigured, loading, busy, error, signedIn: !!session, submit, remove };
+  return { questions, history, result, aiConfigured, questionSource, generatedType, loading, busy, error, signedIn: !!session, generate, submit, remove };
 }

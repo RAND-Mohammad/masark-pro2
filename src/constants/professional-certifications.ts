@@ -145,6 +145,36 @@ export const professionalCertifications: ProfessionalCertification[] = [
 ];
 
 export const professionalCertificationIds = new Set(professionalCertifications.map(item => item.id));
+
+const englishCertificationDetails: Record<string, Pick<ProfessionalCertification, 'level' | 'cost' | 'note'>> = {
+  'github-foundations': { level: 'Foundation', cost: 'Paid exam; check the current price before registering.', note: 'Supports software engineering and source control, but is not a general requirement for software roles.' },
+  'microsoft-pl-300': { level: 'Intermediate', cost: 'Paid exam; price varies by country.', note: 'Covers preparing, modeling, visualizing, and analyzing data with Power BI.' },
+  'databricks-ml-associate': { level: 'Associate', cost: 'Paid exam; check the current price before registering.', note: 'Assesses foundational machine-learning tasks. Practical experience is recommended; it is not a general requirement for data-science roles.' },
+  'aws-ml-engineer-associate': { level: 'Associate', cost: 'Paid exam. MLA-C02 had a promotional price when reviewed; verify the current price and status.', note: 'Covers preparing data, building AI/ML solutions, and deploying, operating, and monitoring them on AWS. The provider recommends practical experience.' },
+  'google-professional-ml-engineer': { level: 'Advanced professional', cost: 'US$200 plus applicable tax according to the provider; verify before registering.', note: 'An advanced option for Google Cloud users. The provider recommends practical experience; one of the suggested certifications is enough for this path.' },
+  'isc2-cc': { level: 'Foundation', cost: 'Training or exam offers may be available; check current exam and renewal fees.', note: 'An introductory cybersecurity certification. The provider says work experience is not required; it is not a general hiring requirement.' },
+  'comptia-security-plus': { level: 'Foundation to intermediate', cost: 'Paid exam; check current pricing and academic discounts before purchasing.', note: 'Covers threats, security architecture, operations, and risk. It supports the path but does not replace hands-on labs.' },
+  'microsoft-sc-200': { level: 'Intermediate', cost: 'Paid exam; price varies by country.', note: 'Focuses on threat investigation and incident response with Microsoft security tools.' },
+  'comptia-network-plus': { level: 'Foundation', cost: 'Paid exam; check current pricing and academic discounts before purchasing.', note: 'A vendor-neutral networking foundation. CCNA is more relevant to Cisco environments; choose the option that fits your goal.' },
+  'cisco-ccna': { level: 'Associate', cost: 'US$300 according to Cisco; taxes may vary.', note: 'Covers networking, access, IP connectivity, security, and automation fundamentals. No prerequisites are required for the exam.' },
+  'microsoft-dp-700': { level: 'Intermediate', cost: 'Paid exam; price varies by country. The provider shows the price before booking.', note: 'Covers ingesting and transforming data, securing analytics solutions, and monitoring them with Microsoft Fabric.' },
+  'google-professional-data-engineer': { level: 'Advanced professional', cost: 'US$200 plus applicable tax according to the provider; verify before registering.', note: 'An advanced option; Google recommends substantial practical experience. One of the suggested certifications is enough for this path.' },
+  'aws-cloud-practitioner': { level: 'Foundation', cost: 'Paid exam; check the current price before registering.', note: 'A cloud foundation certification. It can support an initial learning path but does not prove hands-on DevOps or CI/CD skills.' },
+  'iiba-ecba': { level: 'Foundation', cost: 'Paid; student pricing and discounts vary by region, so verify before purchase.', note: 'Shows foundational business-analysis knowledge. According to IIBA, specific work experience is not required to apply.' },
+  'istqb-ctfl': { level: 'Testing foundation', cost: 'Paid exam; price varies by accredited local provider.', note: 'Suggested specifically for QA Engineer and Software Test Engineer paths; it is not required for other software roles.' },
+  'comptia-a-plus': { level: 'Technical-support foundation', cost: 'Both exams are paid; check current pricing and academic discounts.', note: 'Relevant to technical support, devices, operating systems, and troubleshooting. It is not equally useful across all IT paths.' },
+  'microsoft-az-104': { level: 'Intermediate', cost: 'Paid exam; price varies by country.', note: 'Covers Azure administration, identity, storage, compute, networking, and monitoring; it fits administration and cloud infrastructure paths.' },
+  'aws-solutions-architect-associate': { level: 'Associate', cost: 'US$150 according to AWS when reviewed; verify the current price.', note: 'Best considered after hands-on AWS solution design practice. AWS recommends practical experience, so it is not a required first step for graduates.' },
+  'aws-developer-associate': { level: 'Associate', cost: 'Paid exam; check the current price before registering.', note: 'Useful to backend and cloud developers after building real AWS applications; it does not replace programming fundamentals.' },
+  'cisco-ccna-automation': { level: 'Associate', cost: 'US$300 according to Cisco; taxes may vary.', note: 'Covers programming, APIs, and infrastructure automation. It can support DevOps, IoT, or network-automation paths after practical work.' },
+  'microsoft-dp-900': { level: 'Foundation', cost: 'Paid exam; price varies by country.', note: 'Introduces relational and non-relational data and analytics on Azure; it can be a starting point for database paths.' },
+  'offsec-oscp': { level: 'Advanced and practical', cost: 'Training and exam are paid; check OffSec for current packages.', note: 'An advanced penetration-testing option after networking, systems, and extensive legal lab practice. It is not a beginner requirement.' },
+};
+
+export function professionalCertificationCopy(item: ProfessionalCertification, english: boolean): ProfessionalCertification {
+  return english ? { ...item, ...englishCertificationDetails[item.id] } : item;
+}
+
 export function certificationsForCareer(careerId: string) {
   return professionalCertifications.filter(item => item.careerId === careerId);
 }

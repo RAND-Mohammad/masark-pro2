@@ -3,13 +3,13 @@ import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { AppState, Platform } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
-import { authConfigured, supabase } from '../utils/supabase';
+import { authConfigured, clearStoredAuthSession, supabase } from '../utils/supabase';
 import { setDataOwner } from '../utils/scoped-storage';
 import { parseAuthLink } from '../utils/auth-links';
 import { authErrorMessage } from '../utils/auth-errors';
 import { restoreVerifiedSession } from '../utils/verified-session';
 
-type AuthState = { session: Session | null; ready: boolean; error: string; configured: boolean; callbackBusy: boolean; callbackError: string; recoveryPending: boolean; completeLogin: () => void; finishRecovery: () => void; reload: () => void; signOut: () => Promise<void> };
+type AuthState = { session: Session | null; ready: boolean; error: string; configured: boolean; callbackBusy: boolean; callbackError: string; recoveryPending: boolean; completeLogin: (destination?: string) => void; finishRecovery: () => void; reload: () => void; signOut: () => Promise<void>; finishAccountDeletion: () => Promise<boolean> };
 const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigatedLink = useRef('');
   const [loginRequest, setLoginRequest] = useState(0);
   const handledLogin = useRef(0);
+  const loginDestination = useRef('/home');
   const initialized = useRef(false);
   const acceptSession = useCallback((next: Session | null) => {
     setDataOwner(next?.user.id ?? null);
@@ -108,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready || !session || callbackBusy || recoveryPending || handledLogin.current === loginRequest) return;
     handledLogin.current = loginRequest;
-    router.replace('/home');
+    router.replace(loginDestination.current as never);
   }, [ready, session, callbackBusy, recoveryPending, loginRequest, router]);
   async function signOut() {
     if (!supabase) return;
@@ -117,7 +118,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRecoveryPending(false);
     acceptSession(null);
   }
-  return <AuthContext.Provider value={{ session, ready, error, configured: authConfigured, callbackBusy, callbackError, recoveryPending, completeLogin: () => setLoginRequest(value => value + 1), finishRecovery: () => setRecoveryPending(false), reload: () => setAttempt(value => value + 1), signOut }}>{children}</AuthContext.Provider>;
+  async function finishAccountDeletion() {
+    let cleared = false;
+    try {
+      if (supabase) {
+        const { error: failure } = await supabase.auth.signOut({ scope: 'local' });
+        if (!failure) cleared = true;
+      }
+    } catch { /* Fall through to direct removal from the same secure storage adapter. */ }
+    if (!cleared) {
+      try { await clearStoredAuthSession(); cleared = true; }
+      catch { /* The deleted account cannot mint a new session; report device cleanup status to the screen. */ }
+    }
+    setRecoveryPending(false);
+    acceptSession(null);
+    return cleared;
+  }
+  const completeLogin = (destination = '/home') => {
+    loginDestination.current = ['/admin', '/career-chat', '/interview', '/profile-setup', '/choose-goal'].includes(destination) ? destination : '/home';
+    setLoginRequest(value => value + 1);
+  };
+  return <AuthContext.Provider value={{ session, ready, error, configured: authConfigured, callbackBusy, callbackError, recoveryPending, completeLogin, finishRecovery: () => setRecoveryPending(false), reload: () => setAttempt(value => value + 1), signOut, finishAccountDeletion }}>{children}</AuthContext.Provider>;
 }
 export function useAuth() {
   const value = useContext(AuthContext);

@@ -19,13 +19,13 @@ function fixture(signedIn) {
 }
 test('guest preview is real bilingual curated content, sign-in gates evaluation, and input direction changes', async () => {
   const { h } = fixture(false); await h.flush();
-  assert.match(h.text(), /ليست من بنك مقابلات شركة/);
+  assert.match(h.text(), /ليست من بنك شركة/);
   await h.fill('إجابتك', 'هذه إجابة تجريبية طويلة بما يكفي.');
   assert.equal(h.button('قيّم إجابتي محليًا').props.disabled, true);
   await h.press('تسجيل الدخول أو إنشاء حساب');
   assert.equal(h.routes.at(-1).pathname, '/account');
   await h.press('English');
-  assert.match(h.text(), /not a company interview bank/);
+  assert.match(h.text(), /not company interview questions/);
   assert.equal(h.input('Your answer').props.value, '');
   assert.ok(JSON.stringify(h.input('Your answer').props.style).includes('"writingDirection":"ltr"'));
   h.dispose();

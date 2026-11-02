@@ -16,7 +16,24 @@ function harness({ configured = true, sessionError = null, tokens = ['test-only-
   } };
   const modules = {
     'expo-constants': {},
-    'expo-file-system': { File: class extends Blob { constructor(uri) { const item = nativeFiles[uri] ?? { bytes: nativeBytes, mime: nativeMime }; super([item.bytes], { type: item.mime }); this.uri = uri; } } },
+    'expo-file-system': {
+      FileMode: { ReadOnly: 0 },
+      File: class extends Blob {
+        constructor(uri) { const item = nativeFiles[uri] ?? { bytes: nativeBytes, mime: nativeMime }; super([item.bytes], { type: item.mime }); this.uri = uri; }
+        open(mode) {
+          if (mode !== 0) throw new Error('Unexpected file mode');
+          let offset = 0;
+          return {
+            readBytes: async size => {
+              const bytes = new Uint8Array(await this.slice(offset, offset + size).arrayBuffer());
+              offset += bytes.length;
+              return bytes;
+            },
+            close() {},
+          };
+        }
+      },
+    },
     'expo/fetch': { fetch: async (url, init) => {
       calls.requests.push({ url, init });
       return { ok: status === 200, json: async () => status === 200 ? { skills: [] } : { error: 'سجّل الدخول مجددًا لتحليل السيرة.' } };

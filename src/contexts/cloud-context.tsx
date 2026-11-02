@@ -5,7 +5,7 @@ import { createCloudRuntime, cloudErrorMessage } from '../utils/cloud-runtime';
 import { enableCloudChangeTracking, subscribeDataChanges } from '../utils/scoped-storage';
 import type { SyncChoice, CloudResult } from '../utils/cloud-engine';
 
-type CloudState = { ready: boolean; restoring: boolean; busy: boolean; enabled: boolean; restoreVersion: number; status: CloudResult | 'checking'; error: string; lastSynced: string | null; synchronize: (choice?: SyncChoice, enable?: boolean) => Promise<void>; pause: () => Promise<void> };
+type CloudState = { ready: boolean; restoring: boolean; busy: boolean; enabled: boolean; restoreVersion: number; status: CloudResult | 'checking'; error: string; lastSynced: string | null; synchronize: (choice?: SyncChoice, enable?: boolean) => Promise<CloudResult | undefined>; pause: () => Promise<void>; holdForDeletion: () => Promise<void>; resumeAfterDeletion: () => void };
 const Context = createContext<CloudState | null>(null);
 export function CloudProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
@@ -25,23 +25,31 @@ export function CloudProvider({ children }: { children: ReactNode }) {
   const running = useRef(new Set<ReturnType<typeof createCloudRuntime>>());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const synchronizeRef = useRef<CloudState['synchronize']>(async () => {});
-  const synchronize = useCallback(async (choice: SyncChoice = 'auto', enable = false) => {
+  const heldForDeletion = useRef(false);
+  const syncIdleWaiters = useRef(new Set<() => void>());
+  const synchronize = useCallback(async (choice: SyncChoice = 'auto', enable = false): Promise<CloudResult | undefined> => {
+    if (heldForDeletion.current) return undefined;
     const current = runtime.current;
-    if (!current || running.current.has(current)) return;
+    if (!current || running.current.has(current)) return undefined;
     const stillCurrent = () => alive.current && runtime.current === current;
     if (timer.current) clearTimeout(timer.current);
     running.current.add(current); setBusy(true); setError('');
     try {
       const result = await current.sync(choice, enable);
-      if (!stillCurrent()) return;
+      if (!stillCurrent()) return result;
       setStatus(result);
       const meta = await current.meta();
-      if (!stillCurrent()) return;
+      if (!stillCurrent()) return result;
       setLastSynced(meta.lastSynced);
       setEnabled(meta.enabled);
-      if (result === 'pending') timer.current = setTimeout(() => { void synchronizeRef.current(); }, 1000);
-    } catch (failure) { if (stillCurrent()) { setError(cloudErrorMessage(failure)); setStatus('pending'); timer.current = setTimeout(() => { if (stillCurrent()) void synchronizeRef.current(); }, 15000); } }
-    finally { running.current.delete(current); if (stillCurrent()) { setBusy(false); setRestoring(false); setReady(true); } }
+      if (result === 'pending' && !heldForDeletion.current) timer.current = setTimeout(() => { if (!heldForDeletion.current) void synchronizeRef.current(); }, 1000);
+      return result;
+    } catch (failure) { if (stillCurrent()) { setError(cloudErrorMessage(failure)); setStatus('pending'); if (!heldForDeletion.current) timer.current = setTimeout(() => { if (stillCurrent() && !heldForDeletion.current) void synchronizeRef.current(); }, 15000); } return 'pending'; }
+    finally {
+      running.current.delete(current);
+      for (const notify of [...syncIdleWaiters.current]) notify();
+      if (stillCurrent()) { setBusy(false); setRestoring(false); setReady(true); }
+    }
   }, []);
   useEffect(() => { synchronizeRef.current = synchronize; }, [synchronize]);
   useEffect(() => {
@@ -52,14 +60,14 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     runtime.current = current;
     queueMicrotask(() => { if (alive.current) void synchronizeRef.current(); });
     const unsubscribe = subscribeDataChanges((scope, failed) => {
-      if (scope.owner !== accountId || !alive.current) return;
+      if (scope.owner !== accountId || !alive.current || heldForDeletion.current) return;
       if (failed) { setStatus('pending'); setError('حُفظت البيانات على الجهاز، لكن تعذر تجهيز مزامنتها. أعد المحاولة قبل إغلاق التطبيق.'); return; }
       setStatus('pending');
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => { void current.meta().then(meta => { if (alive.current && runtime.current === current) { setStatus('pending'); void synchronizeRef.current(); } }).catch(() => undefined); }, 900);
     });
-    const retry = setInterval(() => { if (alive.current && runtime.current === current) void synchronizeRef.current(); }, 30000);
-    const appState = AppState.addEventListener('change', state => { if (state === 'active') void current.meta().then(meta => { if (alive.current && runtime.current === current) void synchronizeRef.current(); }).catch(() => undefined); });
+    const retry = setInterval(() => { if (alive.current && runtime.current === current && !heldForDeletion.current) void synchronizeRef.current(); }, 30000);
+    const appState = AppState.addEventListener('change', state => { if (state === 'active' && !heldForDeletion.current) void current.meta().then(meta => { if (alive.current && runtime.current === current && !heldForDeletion.current) void synchronizeRef.current(); }).catch(() => undefined); });
     return () => { alive.current = false; unsubscribe(); clearInterval(retry); appState.remove(); current.stop(); runtime.current = null; if (timer.current) clearTimeout(timer.current); };
   }, [auth.ready, accountId]);
   async function pause() {
@@ -70,6 +78,25 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     try { await current.pause(); if (stillCurrent()) { setStatus('paused'); setEnabled(false); setError(''); } } catch (failure) { if (stillCurrent()) setError(cloudErrorMessage(failure)); }
     finally { running.current.delete(current); if (stillCurrent()) setBusy(false); }
   }
-  return <Context.Provider value={{ ready, restoring, busy, enabled, restoreVersion, status, error, lastSynced, synchronize, pause }}>{children}</Context.Provider>;
+  async function holdForDeletion() {
+    heldForDeletion.current = true;
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    const current = runtime.current;
+    if (!current) return;
+    while (running.current.has(current)) {
+      await new Promise<void>(resolve => {
+        const notify = () => {
+          if (!running.current.has(current)) { syncIdleWaiters.current.delete(notify); resolve(); }
+        };
+        syncIdleWaiters.current.add(notify);
+        notify();
+      });
+    }
+  }
+  function resumeAfterDeletion() {
+    heldForDeletion.current = false;
+    if (runtime.current && alive.current) void synchronizeRef.current();
+  }
+  return <Context.Provider value={{ ready, restoring, busy, enabled, restoreVersion, status, error, lastSynced, synchronize, pause, holdForDeletion, resumeAfterDeletion }}>{children}</Context.Provider>;
 }
 export function useCloud() { const value = useContext(Context); if (!value) throw new Error('CloudProvider missing'); return value; }

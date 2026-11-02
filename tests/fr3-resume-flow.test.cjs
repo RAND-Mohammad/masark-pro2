@@ -17,7 +17,10 @@ const click = (h, label) => h.act(nodes => {
   assert.ok(node && !node.props.disabled, label);
   node.props.onPress();
 });
-const count = (h, label) => h.nodes().find(n => n.type === 'Text' && n.props.accessibilityLabel === `عدد ${label} المعتمدة`)?.props.children;
+const count = (h, label) => {
+  const number = h.nodes().find(n => n.type === 'Text' && n.props.accessibilityLabel === `عدد ${label}`);
+  return number === undefined ? undefined : Number(Array.isArray(number.props.children) ? number.props.children.join('') : number.props.children);
+};
 
 for (const language of ['en', 'ar', 'wrapped-skills']) {
   test(`FR3 ${language}: real PDF → multipart/auth → local parser → client validation → UI correction → actual storage → reopen`, async t => {
@@ -56,6 +59,10 @@ for (const language of ['en', 'ar', 'wrapped-skills']) {
         this.uri = uri;
       }
       get exists() { return disk.has(this.uri); }
+      open(mode) {
+        if (mode !== 0) throw new Error('Unexpected file mode');
+        return { readBytes: async size => new Uint8Array(await this.slice(0, size).arrayBuffer()), close() {} };
+      }
       async copy(destination) { assert.ok(this.exists); disk.set(destination.uri, disk.get(this.uri)); }
       delete() { disk.delete(this.uri); }
     }
@@ -68,7 +75,7 @@ for (const language of ['en', 'ar', 'wrapped-skills']) {
         return response;
       } },
       'expo-document-picker': { getDocumentAsync: async () => ({ canceled: false, assets: [{ uri: 'cache/fictional.pdf', name: 'fictional.pdf', mimeType: 'application/pdf', size: pdf.length }] }) },
-      'expo-file-system': { File, Directory, Paths: { document: 'documents' } },
+      'expo-file-system': { File, FileMode: { ReadOnly: 0 }, Directory, Paths: { document: 'documents' } },
       '../utils/scoped-storage': { __esModule: true, default: storage, captureDataScope: () => ({ suffix: '-synthetic-owner', assertCurrent() {} }) },
       '../utils/supabase': { supabase: { auth: { getSession: async () => ({ error: null, data: { session: { access_token: 'test-only-session' } } }) } } },
     };
@@ -85,7 +92,7 @@ for (const language of ['en', 'ar', 'wrapped-skills']) {
     assert.deepEqual(authRequests, ['Bearer test-only-session']);
     if (language === 'wrapped-skills') {
       const actualNames = ui => ui.nodes().filter(node => node.type === 'TextInput'
-        && node.props.accessibilityLabel === 'اسم المهارة').map(node => node.props.value);
+        && node.props.accessibilityLabel === 'المهارة').map(node => node.props.value);
       assert.equal(providerCalls, 1);
       assert.equal(count(h, 'المهارات'), 15);
       assert.deepEqual([...actualNames(h)].sort(), [...expectedSkills].sort());
@@ -108,22 +115,61 @@ for (const language of ['en', 'ar', 'wrapped-skills']) {
     }
     for (const [label, total] of [['المهارات', 9], ['المشاريع', 3], ['الدورات', 5], ['الشهادات', 2], ['التعليم', 1], ['الخبرات', 2]]) assert.equal(count(h, label), total, label);
     assert.ok(h.text().includes('مستنتج'));
-    assert.ok(h.text().includes('سنة و2 شهر'));
+    await h.act(nodes => {
+      const section = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('الخبرات'));
+      if (section && !section.props.accessibilityState?.expanded) section.props.onPress();
+    });
+    await h.act(nodes => {
+      const details = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('عرض التفاصيل والتعديل:'));
+      if (details && !details.props.accessibilityState?.expanded) details.props.onPress();
+    });
+    assert.ok(h.text().includes('المدة:'), h.text());
     assert.ok(h.text().includes('تقريبًا'));
+    await h.act(nodes => {
+      const section = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('التعليم'));
+      if (section && !section.props.accessibilityState?.expanded) section.props.onPress();
+    });
+    await h.act(nodes => {
+      const details = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('عرض التفاصيل والتعديل:')
+        && n.props.accessibilityLabel.includes(language === 'en' ? 'Bachelor of Science' : 'بكالوريوس العلوم'));
+      if (details && !details.props.accessibilityState?.expanded) details.props.onPress();
+    });
     assert.ok(h.text().includes('المصدر الأصلي لهذا الحقل:'));
     const universityQuote = language === 'en' ? 'University: Demo University' : 'الجامعة: جامعة تجريبية';
     assert.ok(h.text().includes(universityQuote), 'the education source quote must be visible in the actual review UI');
 
     const projectTitle = language === 'en' ? 'Campus Portal' : 'بوابة الحرم';
     const corrected = language === 'en' ? 'Corrected Portal' : 'بوابة معدلة';
+    await h.act(nodes => {
+      const section = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('المشاريع'));
+      if (section && !section.props.accessibilityState?.expanded) section.props.onPress();
+    });
+    await h.act(nodes => {
+      const details = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith(`عرض التفاصيل والتعديل: ${projectTitle}`));
+      if (details && !details.props.accessibilityState?.expanded) details.props.onPress();
+    });
     assert.equal(h.input('اسم المشروع').props.value, projectTitle);
     await h.fill('اسم المشروع', corrected);
+    await click(h, `تغيير قسم ${corrected}`);
     await click(h, `نقل ${corrected} إلى الدورات`);
     assert.equal(count(h, 'المشاريع'), 2);
     assert.equal(count(h, 'الدورات'), 6);
+    await h.act(nodes => {
+      const section = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('الدورات'));
+      if (section && !section.props.accessibilityState?.expanded) section.props.onPress();
+    });
+    await h.act(nodes => {
+      const details = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith(`عرض التفاصيل والتعديل: ${corrected}`));
+      if (details && !details.props.accessibilityState?.expanded) details.props.onPress();
+    });
+    await click(h, `تغيير قسم ${corrected}`);
     await click(h, `نقل ${corrected} إلى المشاريع`);
     assert.equal(count(h, 'المشاريع'), 3);
     assert.equal(count(h, 'الدورات'), 5);
+    await h.act(nodes => {
+      const section = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('المهارات'));
+      if (section && !section.props.accessibilityState?.expanded) section.props.onPress();
+    });
     await click(h, 'استبعاد Python');
     assert.equal(count(h, 'المهارات'), 8);
     await click(h, 'اعتماد Python');
@@ -167,6 +213,14 @@ for (const language of ['en', 'ar', 'wrapped-skills']) {
     assert.equal(count(reopened, 'المهارات'), 8);
     assert.equal(count(reopened, 'المشاريع'), 3);
     assert.equal(count(reopened, 'الدورات'), 5);
+    await reopened.act(nodes => {
+      const section = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('المشاريع'));
+      if (section && !section.props.accessibilityState?.expanded) section.props.onPress();
+    });
+    await reopened.act(nodes => {
+      const details = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith(`عرض التفاصيل والتعديل: ${corrected}`));
+      if (details && !details.props.accessibilityState?.expanded) details.props.onPress();
+    });
     assert.ok(reopened.nodes().some(n => n.type === 'TextInput' && n.props.value === corrected));
     assert.equal(JSON.stringify(JSON.parse(memory.get('masarak-saved-cv-v1')).review), savedCopy);
     assert.deepEqual(statuses, [200]); // Reopening never re-uploads or re-analyzes.

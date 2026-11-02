@@ -12,7 +12,7 @@ test('punctuation and spacing differences preserve actual quotes without semanti
 });
 test('a literal project title preserves a record when a model paraphrases the evidence', () => {
   const source = '[P1L1 y=100] (x=40) Encrypted Notes Application (Python)\n[P1L2 y=115] (x=40) Built a small encryption application.';
-  const value = { ...empty, projects: [{ name: 'Encrypted Notes Application (Python)', organization: '', dates: '', description: '', evidence: 'This person developed a secure application' }] };
+  const value = { ...empty, projects: [{ name: 'Encrypted Notes Application (Python)', organization: '', dates: '', duration: '', description: '', evidence: 'This person developed a secure application' }] };
   const result = validateAnalysis(value, source);
   assert.equal(result.projects.length, 1);
   assert.equal(result.projects[0].evidence, 'Encrypted Notes Application (Python)');

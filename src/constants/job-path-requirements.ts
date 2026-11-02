@@ -1,23 +1,27 @@
 import dataset from '../masarak_dataset.json';
 import { jobPathById } from './job-paths';
+import { englishJobPathGuidance } from './job-path-requirements.en';
 
 export type JobPathRequirementProfile = {
   coreSkillNames: string[];
   additionalSkillNames: string[];
   certificationIds: string[];
   education: string;
+  educationEn: string;
   experience: string;
+  experienceEn: string;
   projects: string[];
+  projectsEn: string[];
   evidenceKeywords: string[];
-  sources: { label: string; url: string }[];
+  sources: { label: string; labelEn: string; url: string }[];
   weights: { skills: number; practical: number; certifications: number; academic: number; learning: number };
 };
 
-type Template = Omit<JobPathRequirementProfile, 'education' | 'sources' | 'weights'>;
+type Template = Omit<JobPathRequirementProfile, 'education' | 'educationEn' | 'experienceEn' | 'projectsEn' | 'sources' | 'weights'>;
 
-const sfia = { label: 'إطار SFIA 9 للمهارات والأدوار الرقمية', url: 'https://sfia-online.org/en/sfia-9' };
-const scywf = { label: 'الإطار السعودي للقوى العاملة في الأمن السيبراني', url: 'https://nca.gov.sa/en/regulatory-documents/frameworks-and-standard-list/scywf/' };
-const sdaia = { label: 'المعايير المهنية الوطنية للبيانات والذكاء الاصطناعي', url: 'https://sdaia.gov.sa/en/Research/Pages/NOSF.aspx' };
+const sfia = { label: 'إطار SFIA 9 للمهارات والأدوار الرقمية', labelEn: 'SFIA 9 framework for digital skills and roles', url: 'https://sfia-online.org/en/sfia-9' };
+const scywf = { label: 'الإطار السعودي للقوى العاملة في الأمن السيبراني', labelEn: 'Saudi Cybersecurity Workforce Framework (SCYWF)', url: 'https://nca.gov.sa/en/regulatory-documents/frameworks-and-standard-list/scywf/' };
+const sdaia = { label: 'المعايير المهنية الوطنية للبيانات والذكاء الاصطناعي', labelEn: 'National Occupational Standards for Data and Artificial Intelligence', url: 'https://sdaia.gov.sa/en/Research/Pages/NOSF.aspx' };
 
 const templates: Record<string, Template> = {
   software: {
@@ -278,10 +282,14 @@ export function jobPathRequirementProfile(id: string): JobPathRequirementProfile
   if (!path) return null;
   const templateName = titleTemplate[path.title];
   const template = templates[templateName];
-  if (!template) return null;
+  const english = englishJobPathGuidance[templateName];
+  if (!template || !english) return null;
   return {
     ...template,
     education: `درجة جامعية مناسبة مثل ${path.majors.join(' أو ')} مفيدة لهذا المسار، لكنها لا تعوض المهارات والمشروع العملي.`,
+    educationEn: 'A relevant university degree may help with this path, but it does not replace practical skills and project evidence.',
+    experienceEn: english.experience,
+    projectsEn: english.projects,
     sources: sourcesFor(templateName),
     weights: weightByTemplate[templateName] ?? defaultWeights,
   };

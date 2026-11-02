@@ -5,17 +5,24 @@ import { jobPathIds } from '../constants/job-paths';
 export type PersonalProfile = {
   version: 1; name: string; major: string; institution: string;
   education: string; studyStatus: string; studyDates: string; college?: string;
+  city: string; graduationYear: string;
   gpa: number | null; gpaScale: 4 | 5 | null;
   interests: string[]; traits: string[]; careerGoal: string | null;
 };
 export const PERSONAL_PROFILE_KEY = 'masarak-personal-profile-v1';
-export const emptyPersonalProfile = (): PersonalProfile => ({ version: 1, name: '', major: '', institution: '', education: '', studyStatus: '', studyDates: '', gpa: null, gpaScale: null, interests: [], traits: [], careerGoal: null });
+export const emptyPersonalProfile = (): PersonalProfile => ({ version: 1, name: '', major: '', institution: '', education: '', studyStatus: '', studyDates: '', city: '', graduationYear: '', gpa: null, gpaScale: null, interests: [], traits: [], careerGoal: null });
 export function parsePersonalProfile(value: unknown): PersonalProfile {
   if (!value || typeof value !== 'object') throw new Error('Invalid personal profile');
   const v = value as Record<string, unknown>;
   const fields = ['name', 'major', 'institution', 'education', 'studyStatus', 'studyDates'] as const;
   if (v.version !== 1 || fields.some(field => typeof v[field] !== 'string' || (v[field] as string).length > 300)) throw new Error('Invalid personal profile');
   if (v.college !== undefined && (typeof v.college !== 'string' || v.college.length > 300)) throw new Error('Invalid college');
+  for (const field of ['city', 'graduationYear'] as const) {
+    if (v[field] !== undefined && (typeof v[field] !== 'string' || (v[field] as string).length > (field === 'city' ? 100 : 4))) throw new Error(`Invalid ${field}`);
+  }
+  const city = typeof v.city === 'string' ? v.city.trim() : '';
+  const graduationYear = typeof v.graduationYear === 'string' ? v.graduationYear.trim() : '';
+  if (graduationYear && !/^\d{4}$/u.test(graduationYear)) throw new Error('Invalid graduation year');
   const list = (field: 'interests' | 'traits') => {
     const values = v[field];
     if (!Array.isArray(values) || values.length > 30 || values.some(item => typeof item !== 'string' || item.length > 100)) throw new Error('Invalid profile list');
@@ -25,7 +32,7 @@ export function parsePersonalProfile(value: unknown): PersonalProfile {
   const gpaScale = v.gpaScale === 4 || v.gpaScale === 5 ? v.gpaScale : null;
   const gpa = typeof v.gpa === 'number' && Number.isFinite(v.gpa) && gpaScale !== null && v.gpa >= 0 && v.gpa <= gpaScale ? v.gpa : null;
   if ((v.gpa !== undefined && v.gpa !== null && gpa === null) || (v.gpaScale !== undefined && v.gpaScale !== null && gpaScale === null)) throw new Error('Invalid GPA');
-  return { version: 1, ...Object.fromEntries(fields.map(field => [field, (v[field] as string).trim()])), ...(v.college !== undefined ? { college: (v.college as string).trim() } : {}), gpa, gpaScale, interests: list('interests'), traits: list('traits'), careerGoal: v.careerGoal } as PersonalProfile;
+  return { version: 1, ...Object.fromEntries(fields.map(field => [field, (v[field] as string).trim()])), ...(v.college !== undefined ? { college: (v.college as string).trim() } : {}), city, graduationYear, gpa, gpaScale, interests: list('interests'), traits: list('traits'), careerGoal: v.careerGoal } as PersonalProfile;
 }
 export async function readPersonalProfile(): Promise<PersonalProfile | null> {
   const raw = await AsyncStorage.getItem(PERSONAL_PROFILE_KEY);

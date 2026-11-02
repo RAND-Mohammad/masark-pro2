@@ -4,6 +4,7 @@ import { serverUrl } from './cv-api';
 import { isInterviewResult, type InterviewResult } from './interview-types';
 import type { InterviewQuestion } from '../data/interview-bank.mjs';
 import { captureDataScope } from './scoped-storage';
+export type InterviewPracticeType = 'technical' | 'behavioral';
 async function request(path: string, body?: unknown): Promise<unknown> {
   const scope = captureDataScope();
   if (!supabase) throw new Error('تسجيل الدخول غير مهيأ. / Authentication is not configured.');
@@ -30,6 +31,15 @@ export async function getInterviewQuestions(careerId: string, language: 'ar' | '
       || item.careerId !== careerId || typeof item.prompt !== 'string' || !Array.isArray(item.concepts)
       || item.concepts.some(concept => typeof concept !== 'string'))) throw new Error('نتيجة غير صالحة. / Invalid response.');
   return { questions: result.questions, aiConfigured: result.aiConfigured };
+}
+export async function generateInterviewQuestions(careerId: string, language: 'ar' | 'en', type: InterviewPracticeType, consent: boolean): Promise<InterviewQuestion[]> {
+  const result = await request('generate', { careerId, language, type, consent }) as { questions?: InterviewQuestion[]; source?: string };
+  if (result.source !== 'groq-adaptive' || !Array.isArray(result.questions) || result.questions.length !== 3
+    || result.questions.some(item => typeof item.id !== 'string' || !item.id.startsWith(`${careerId}-ai-`)
+      || item.careerId !== careerId || typeof item.prompt !== 'string' || !Array.isArray(item.concepts)
+      || item.concepts.length < 3 || item.concepts.length > 5 || item.concepts.some(concept => typeof concept !== 'string')
+      || item.source !== 'groq-adaptive' || item.type !== type)) throw new Error('تعذر التحقق من الأسئلة المولّدة. / Invalid generated questions.');
+  return result.questions;
 }
 export async function evaluateInterviewAnswer(input: { careerId: string; questionId: string; language: 'ar' | 'en'; answer: string; useAi: boolean; consent: boolean }): Promise<InterviewResult> {
   const result = await request('evaluate', input);

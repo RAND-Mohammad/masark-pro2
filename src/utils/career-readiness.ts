@@ -1,6 +1,6 @@
+import { careerProfiles } from '../constants/career-profiles';
 import { certificationsByIds, certificationsForCareer } from '../constants/professional-certifications';
 import { learningResources } from '../constants/learning-resources';
-import { careerProfiles } from '../constants/career-profiles';
 import { calculateCareerScore } from './career-score';
 import type { PersonalProfile } from './personal-profile';
 import type { SkillProfile } from './skill-profile';
@@ -29,6 +29,8 @@ export type ReadinessInputs = {
   professionalCertifications: string[];
 };
 
+// Retained as a separate evidence summary; FR6's readiness percentage is the
+// core-skill coverage score exposed by getSkillGapReport.
 export function calculateCareerReadiness(careerId: string, input: ReadinessInputs) {
   const baseCareerId = resolveBaseCareerId(careerId);
   const pathProfile = jobPathRequirementProfile(careerId);
@@ -42,32 +44,21 @@ export function calculateCareerReadiness(careerId: string, input: ReadinessInput
   const projects = profile ? allProjects.filter(item => isRelevantEvidence(item, profile.evidenceKeywords)).length : 0;
   const experiences = profile ? allExperiences.filter(item => isRelevantEvidence(item, profile.evidenceKeywords)).length : 0;
   const documentedPracticalRatio = (Math.min(projects, 2) / 2 + Math.min(experiences, 1)) / 2;
-  // Only evidence whose text contains role signals earns practical points. Skill
-  // coverage then scales those points so a generic project cannot inflate every role.
   const practicalRatio = documentedPracticalRatio * skillRatio;
   const roleCertifications = pathProfile ? certificationsByIds(pathProfile.certificationIds) : certificationsForCareer(baseCareerId);
-  // Certifications listed for one role are alternatives, not a checklist the
-  // user must purchase. One verified role certificate earns this component.
   const certificationRatio = roleCertifications.some(item => input.professionalCertifications.includes(item.id)) ? 1 : 0;
   const coreIds = new Set(skillReport.core.map(item => item.skill_id));
   const roleResources = learningResources.filter(resource => resource.skillIds.some(id => coreIds.has(id)));
-  const learningRatio = roleResources.length
-    ? roleResources.filter(resource => input.learningProgress[resource.id]).length / roleResources.length
-    : 0;
+  const learningRatio = roleResources.length ? roleResources.filter(resource => input.learningProgress[resource.id]).length / roleResources.length : 0;
   const approvedDegree = input.skillProfile?.cv?.education?.[0];
   const education = input.personal?.education.trim() || approvedDegree?.name || '';
   const major = input.personal?.major.trim() || approvedDegree?.major || '';
   const hasEducation = Boolean(education || major);
   const academicText = `${education} ${major}`.toLocaleLowerCase();
   const relevantMajor = path && Array.isArray(path.majors)
-    ? Boolean(path.majors.some(major => {
-        const normalized = major.toLocaleLowerCase();
-        return academicText.includes(normalized) || normalized.split(/\s+/).some(word => word.length > 4 && academicText.includes(word));
-      }))
+    ? Boolean(path.majors.some(value => { const normalized = value.toLocaleLowerCase(); return academicText.includes(normalized) || normalized.split(/\s+/).some(word => word.length > 4 && academicText.includes(word)); }))
     : Boolean('majorKeywords' in profile && profile.majorKeywords.some(keyword => academicText.includes(keyword.toLocaleLowerCase())));
-  const gpaRatio = input.personal?.gpa !== null && input.personal?.gpaScale
-    ? Math.max(0, Math.min(1, input.personal.gpa / input.personal.gpaScale))
-    : 0;
+  const gpaRatio = input.personal?.gpa !== null && input.personal?.gpaScale ? Math.max(0, Math.min(1, input.personal.gpa / input.personal.gpaScale)) : 0;
   const academicRatio = (hasEducation ? 0.2 : 0) + (relevantMajor ? 0.3 : 0) + (gpaRatio * 0.5);
   const breakdown = {
     skills: Math.round(weights.skills * skillRatio),
@@ -77,11 +68,8 @@ export function calculateCareerReadiness(careerId: string, input: ReadinessInput
     learning: Math.round(weights.learning * learningRatio),
   };
   const hasAnyEvidence = Boolean(input.skillProfile?.skill_ids.length || projects || experiences || hasEducation || input.personal?.gpa !== null && input.personal?.gpa !== undefined || Object.keys(input.learningProgress).length || input.professionalCertifications.length);
-  return {
-    score: hasAnyEvidence ? Object.values(breakdown).reduce((sum, value) => sum + value, 0) : null,
-    breakdown, weights, skillReport,
-    evidence: { projects, experiences, totalProjects: allProjects.length, totalExperiences: allExperiences.length, relevantMajor, completedResources: roleResources.filter(resource => input.learningProgress[resource.id]).length, totalResources: roleResources.length, achievedCertifications: roleCertifications.filter(item => input.professionalCertifications.includes(item.id)).length, totalCertifications: roleCertifications.length },
-  };
+  return { score: hasAnyEvidence ? Object.values(breakdown).reduce((sum, value) => sum + value, 0) : null, breakdown, weights, skillReport,
+    evidence: { projects, experiences, totalProjects: allProjects.length, totalExperiences: allExperiences.length, relevantMajor, completedResources: roleResources.filter(resource => input.learningProgress[resource.id]).length, totalResources: roleResources.length, achievedCertifications: roleCertifications.filter(item => input.professionalCertifications.includes(item.id)).length, totalCertifications: roleCertifications.length } };
 }
 
 // Normalize spelling and presentation only; matching uses the existing role vocabulary.
@@ -104,7 +92,8 @@ export function getCareerReadinessMatches(input: ReadinessInputs) {
     });
     return {
       career_id: career.id, title: career.title, description: career.description,
-      score: readiness.score,
+      // Readiness is the documented share of required core skills.
+      score: readiness.skillReport.score,
       skillScore: readiness.skillReport.score,
       matched: readiness.skillReport.matchedCore.length,
       total: readiness.skillReport.core.length,
@@ -113,7 +102,7 @@ export function getCareerReadinessMatches(input: ReadinessInputs) {
       weights: readiness.weights,
       matchedInterests,
     };
-  // Stable sort retains catalogue order within equally matched readiness ties.
+  // Keep catalogue order for equal readiness scores, then use stated interests as a tie-breaker.
   }).sort((a, b) => (b.score ?? -1) - (a.score ?? -1)
     || Number(b.matchedInterests.length > 0) - Number(a.matchedInterests.length > 0));
 }

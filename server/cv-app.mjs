@@ -5,15 +5,21 @@ import { createEmailHookRouter } from './auth-email-hook.mjs';
 import { createCvSessionGuard } from './cv-session.mjs';
 import { createInterviewRouter } from './interview.mjs';
 import { createJobsRouter } from './jobs.mjs';
+import { createAdminRouter, createPublicLearningResourcesRouter } from './admin.mjs';
+import { createCareerChatRouter } from './career-chat.mjs';
+import { createAccountDeletionRouter } from './account-deletion.mjs';
 import { CV_PARSER_VERSION } from '../src/utils/cv-parser-version.mjs';
 
 // Separating construction from listening lets tests use a loopback-only server.
 export function createCvApp({
-  authenticate = createCvSessionGuard(),
+  authenticate: suppliedAuthenticate,
   extractCvText = extractText,
   analyzeCvText = analyzeText,
+  jobsScheduler,
 } = {}) {
   const app = express();
+  const authenticate = suppliedAuthenticate ?? createCvSessionGuard();
+  const accountDeletionAuthenticate = suppliedAuthenticate ?? createCvSessionGuard({ allowDeletionInProgress: true });
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 2, parts: 3 } });
   let inProgress = false;
   const attempts = [];
@@ -22,7 +28,7 @@ export function createCvApp({
   app.use((req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     const origin = req.headers.origin;
-    if (origin && /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
+    if (origin && /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Methods', 'POST,GET,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
@@ -33,7 +39,11 @@ export function createCvApp({
     status: 'ok', configured: Boolean(process.env.GROQ_API_KEY?.trim()), parserVersion: CV_PARSER_VERSION,
   }));
   app.use('/interview', createInterviewRouter({ authenticate }));
+  app.use('/career-chat', createCareerChatRouter({ authenticate }));
   app.use('/jobs', createJobsRouter({ authenticate }));
+  app.use('/learning-resources', createPublicLearningResourcesRouter());
+  app.use('/admin', createAdminRouter({ authenticate, scheduler: jobsScheduler }));
+  app.use('/account', createAccountDeletionRouter({ authenticate: accountDeletionAuthenticate }));
   app.post('/analyze-cv', authenticate, (req, res, next) => {
     while (attempts.length && Date.now() - attempts[0] > 60000) attempts.shift();
     if (inProgress || attempts.length >= 5) return res.status(429).json({ error: 'الخادم مشغول أو وصل لحد الطلبات. حاول بعد قليل.' });

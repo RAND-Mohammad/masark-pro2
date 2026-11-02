@@ -27,12 +27,12 @@ const source = lines.map((line, index) => `[P1L${index + 1} y=${20 + index * 12}
 const empty = { skills: [], certificates: [], courses: [], experiences: [], education: [], projects: [], activities: [], unclassified: [] };
 const education = {
   name: 'Bachelor of Science in Computer Science', organization: 'Example University',
-  college: '', major: 'Computer Science', study_status: 'Expected Graduation', dates: '2027', date_line_id: 'P1L4', description: '',
+  college: '', major: 'Computer Science', study_status: 'Expected Graduation', gpa: '', dates: '2027', date_line_id: 'P1L4', description: '',
   evidence: lines.slice(1, 4).join('\n'),
 };
 const project = {
   name: lines[5], organization: '', role: '', technologies: ['Python'], category: '', category_basis: '', category_evidence: '',
-  dates: '', date_line_id: '', description: lines[6], evidence: lines.slice(5, 8).join('\n'),
+  dates: '', duration: '', date_line_id: '', description: lines[6], evidence: lines.slice(5, 8).join('\n'),
 };
 const experience = {
   role: 'Data Analyst', organization: 'Fictional Labs', location: '', dates: 'Jan 2021 - Mar 2022',
@@ -41,7 +41,7 @@ const experience = {
 const response = {
   ...empty, skills: [{ name: 'Python', mapped_skill_id: null, evidence: 'Python, SQL' }],
   education: [education], projects: [project], experiences: [experience],
-  courses: [{ name: lines[16], issuer: '', date: '', date_line_id: '', evidence: lines[16] }],
+  courses: [{ name: lines[16], issuer: '', date: '', duration: '', date_line_id: '', evidence: lines[16] }],
   certificates: [{ name: lines[18], issuer: '', date: '', date_line_id: '', evidence: lines[18] }],
 };
 

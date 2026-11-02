@@ -9,7 +9,7 @@ const boundary = /^(?:summary|profile|objective|contact|awards|references|الم
 const categoryMarkers = () => /(^|[,،;؛]\s*)([\p{L}][\p{L}\p{N} /&()_-]{0,60}?)(?:\s*[:：]\s*|\s+[—–-]\s+)/gmu;
 const cleanBullet = value => value.replace(/^(?:[-*•▪]\s+|\d+[.)]\s+)/u, '').trim();
 const cellsOf = row => row.replace(/^\[[PD]\d+L\d+(?: y=\d+)?\]\s*/u, '')
-  .split(/\s+\|\s+(?=\(x=\d+\))/u)
+  .split(/(?:\s+\|\s+|\s+)(?=\(x=\d+\))/u)
   .map(cell => cell.replace(/^\(x=\d+\)\s*/u, '').trim()).filter(Boolean);
 
 function labelled(value) {
@@ -79,7 +79,11 @@ function readLists(source, { sectionOnly }) {
     }
     if (cells.length !== 1) {
       flush(); // Never attach a wrapped item to another visual column.
-      if (!active && !sectionOnly) for (const cell of cells) if (labelled(cell)) parse(cell, 2);
+      if (active) {
+        for (const cell of cells) if (labelled(cell)) parse(cell, 2);
+      } else if (!sectionOnly) {
+        for (const cell of cells) if (labelled(cell)) parse(cell, 2);
+      }
       continue;
     }
     const line = cleanBullet(cells[0]);

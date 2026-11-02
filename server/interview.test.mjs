@@ -49,7 +49,7 @@ test('configured AI is only called with consent and validated; provider details 
 });
 test('HTTP authentication, validation, JSON limits and rate limits guard the real routes', async t => {
   let authCalls = 0;
-  const authenticate = createCvSessionGuard({ url: 'https://synthetic.supabase.co', key: 'sb_publishable_synthetic', fetchImpl: async () => {
+  const authenticate = createCvSessionGuard({ url: 'https://synthetic.supabase.co', key: 'sb_publishable_synthetic', checkDeletionInProgress: false, fetchImpl: async () => {
     authCalls++; return new Response(JSON.stringify({ id: 'synthetic-owner' }));
   } });
   const server = createServer(createCvApp({ authenticate }));

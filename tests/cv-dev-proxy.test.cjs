@@ -93,6 +93,7 @@ test('unavailable internal service returns a generic 502 without leaking its add
 });
 
 test('private Unix-socket upstream supports the bridge without any backend TCP port', async t => {
+  if (process.platform === 'win32') { t.skip('Unix-domain socket fixture is unavailable on Windows.'); return; }
   const h = await setup(t, { useSocket: true });
   assert.equal((await h.send('/api/cv/health')).status, 200);
   assert.equal((await h.send('/api/cv/analyze-cv', { method: 'POST' })).status, 401);

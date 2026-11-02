@@ -35,7 +35,7 @@ const nonContentLine = /^(?:fictional test data\b|page\s+\d+(?:\s+of\s+\d+)?\b|c
 const splitList = value => value.split(/[,،;؛•▪]/u).map(s => s.trim()).filter(Boolean);
 const cleanBullet = value => value.replace(/^(?:[-*•▪]\s*|\d+[.)]\s*)/u, '').trim();
 const resumeMonth = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|يناير|فبراير|مارس|أبريل|ابريل|مايو|يونيو|يوليو|أغسطس|اغسطس|سبتمبر|أكتوبر|اكتوبر|نوفمبر|ديسمبر)';
-const resumeDatePoint = `(?:${resumeMonth}\\s+)?(?:19|20)\\d{2}`;
+const resumeDatePoint = `(?:${resumeMonth}\\s+)?(?:19|20)[0-9٠-٩]{2}`;
 export function isLiteralSkillName(name) {
   return typeof name === 'string' && name.length > 0 && name.length <= 60
     && !/\b(?:university|college|faculty|bachelor|master|degree|diploma|project|course|certificat(?:e|ion)|student|engineer|analyst|developer|intern)\b|جامعة|كلية|بكالوريوس|ماجستير|تخصص|مشروع|دورة|شهادة|مهندس|مهندسة|مطور|محلل|متدرب|خريج/iu.test(name)
@@ -209,7 +209,8 @@ export function extractLocalSections(source, basic, matchSkill) {
       return;
     }
     const title = tokens.find(item => item.field === 'name');
-    const credentialLine = !title && ['courses', 'certificates'].includes(section) ? parseCredentialLine(text) : null;
+    const credentialLine = !title && tokens.every(item => !item.field)
+      && ['courses', 'certificates'].includes(section) ? parseCredentialLine(text) : null;
     if (credentialLine) {
       const { name, issuer, date, duration } = credentialLine;
       if (name.length <= 150 && issuer.length <= 120) {
@@ -317,7 +318,7 @@ export function extractLocalSections(source, basic, matchSkill) {
       if (['projects', 'courses', 'certificates', 'unclassified', 'activities'].includes(section)
         && text.length <= 150 && !/[.!?؟]$/u.test(text) && !jobLike
         && (numbered || (text.split(/\s+/u).length >= 2 && !isDate(text))
-          || (section === 'projects' && text.length >= 3 && !/[.!?؟]$/u.test(text) && !isDate(text))
+          || (section === 'projects' && text.length >= 3 && text.split(/\s+/u).length >= 2 && !/[.!?؟]$/u.test(text) && !isDate(text))
           || (section === 'certificates' && /\+|certified|شهادة/iu.test(text)))) {
         const target = section === 'certificates' && /^شهادة مهنية[،,\s]/u.test(text) ? 'unclassified'
           : section === 'certificates' && /course completion|completion of .+ course|إتمام دورة|إتمام الدورة|اجتياز دورة/iu.test(text) ? 'courses' : section;
@@ -372,7 +373,7 @@ export function extractLocalSections(source, basic, matchSkill) {
       if (currentTarget === 'education' && field === 'dates' && !current.study_status
         && /expected graduation|(?:تاريخ )?التخرج المتوقع/iu.test(token.label)) {
         const marker = value.match(/expected\s+graduation|(?:تاريخ\s+)?التخرج\s+المتوقع/iu)?.[0];
-        if (marker) setField('study_status', value.trim(), value);
+        if (marker) setField('study_status', marker.trim(), value);
       }
     }
   }
@@ -406,7 +407,10 @@ export function extractLocalSections(source, basic, matchSkill) {
     }
     if (cells.length !== 1) {
       if (section && ['education', 'projects'].includes(section)) {
-        for (const cell of cells) process(cell, lineId);
+        sectionStatus[section] = 'uncertain';
+        skippedColumns = true;
+        blocked = true;
+        reset();
         continue;
       }
       if (section) sectionStatus[section] = 'uncertain';
@@ -479,6 +483,7 @@ function parseCredentialLine(text) {
     ?? remainder.match(/^([^,،;؛]{2,150})\s*[,،;؛]\s*(.{2,120})$/u);
   if (!split) return null;
   const name = split[1].trim(), issuer = split[2].trim();
+  if (/^شهادة مهنية$/u.test(name)) return null;
   if (!name || !issuer || name.length > 150 || issuer.length > 120 || isDate(name)) return null;
   return { name, issuer, date, duration };
 }

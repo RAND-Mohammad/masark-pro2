@@ -120,7 +120,14 @@ for (const platform of ['ios', 'android']) {
 test('web keeps browser printing, catches blocked popups and uses escaped self-contained HTML', async () => {
   const d = data(), writes = [], printed = [];
   let allowed = false;
-  const popup = { opener: {}, document: { open() {}, write: html => writes.push(html), close() {} }, focus() {}, print: () => printed.push(true) };
+  const style = { append() {} };
+  const toolbar = { style: {}, append() {} };
+  const button = { style: {}, addEventListener() {} };
+  const popup = { opener: {}, document: {
+    open() {}, write: html => writes.push(html), close() {},
+    createElement: name => name === 'button' ? button : toolbar,
+    body: { prepend() {} }, querySelector: () => style,
+  }, focus() {}, print: () => printed.push(true) };
   const load = projectModule({ 'src/utils/scoped-storage.ts': { captureDataScope: () => ({ assertCurrent() {} }) } },
     { window: { open: () => allowed ? popup : null } });
   const run = () => load('src/utils/print-student-resume.web.ts').printStudentResume(d.personal, d.skills);

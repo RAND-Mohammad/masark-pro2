@@ -12,6 +12,7 @@ import { createAccountClient } from './supabase';
 import type { Session } from '@supabase/supabase-js';
 import { readInterviewHistory, INTERVIEW_HISTORY_KEY } from './interview-history';
 import { readJobTarget, JOB_TARGET_KEY } from './job-target';
+import { CV_CLOUD_STORAGE_KEY, readCvCloudStorageConsent } from './cv-cloud-storage';
 
 export function cloudErrorMessage(error: unknown): string {
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
@@ -32,11 +33,11 @@ export function createCloudRuntime(getSession: () => Session | null, onRestoring
     check();
   };
   const localData = async () => {
-    const [personal, skills, plan, learningProgress, professionalCertifications, cv] = await Promise.all([readPersonalProfile(), readSkillProfile(), readLearningPlan(), readLearningProgress(), readProfessionalCertifications(), loadSavedCv()]); check();
+    const [personal, skills, plan, learningProgress, professionalCertifications, cv, cvStorageEnabled] = await Promise.all([readPersonalProfile(), readSkillProfile(), readLearningPlan(), readLearningProgress(), readProfessionalCertifications(), loadSavedCv(), readCvCloudStorageConsent()]); check();
     const [interviews, jobTarget] = await Promise.all([readInterviewHistory(), readJobTarget()]); check();
-    return { personal, skills, plan, learningProgress, professionalCertifications, cv, interviews, jobTarget };
+    return { personal, skills, plan, learningProgress, professionalCertifications, cv, cvStorageEnabled, interviews, jobTarget };
   };
-  const describeLocal = (data: Awaited<ReturnType<typeof localData>>) => JSON.stringify({ personal: data.personal, skills: data.skills, plan: data.plan, learningProgress: data.learningProgress, professionalCertifications: data.professionalCertifications, cv: data.cv ? { identity: data.cv.file_id, name: data.cv.asset.name, size: data.cv.asset.size, mimeType: data.cv.asset.mimeType, review: data.cv.review } : null, interviews: data.interviews, ...(data.jobTarget ? { jobTarget: data.jobTarget } : {}) });
+  const describeLocal = (data: Awaited<ReturnType<typeof localData>>) => JSON.stringify({ personal: data.personal, skills: data.skills, plan: data.plan, learningProgress: data.learningProgress, professionalCertifications: data.professionalCertifications, cvStorageEnabled: data.cvStorageEnabled, cv: data.cvStorageEnabled && data.cv ? { identity: data.cv.file_id, name: data.cv.asset.name, size: data.cv.asset.size, mimeType: data.cv.asset.mimeType, review: data.cv.review } : null, interviews: data.interviews, ...(data.jobTarget ? { jobTarget: data.jobTarget } : {}) });
   async function sync(choice: SyncChoice = 'auto', enable = false): Promise<CloudResult> {
     const operation = pending.then(async () => {
       check();
@@ -54,13 +55,14 @@ export function createCloudRuntime(getSession: () => Session | null, onRestoring
           return { revision: data.revision, snapshot: parseCloudSnapshot(data.snapshot, owner), updated_at: data.updated_at };
         },
         hasLocalData: async () => {
-          const [personal, skills, plan, learningProgress, professionalCertifications, cv] = await Promise.all([readPersonalProfile(), readSkillProfile(), readLearningPlan(), readLearningProgress(), readProfessionalCertifications(), loadSavedCv()]);
+          const [personal, skills, plan, learningProgress, professionalCertifications, cv, cvStorageEnabled] = await Promise.all([readPersonalProfile(), readSkillProfile(), readLearningPlan(), readLearningProgress(), readProfessionalCertifications(), loadSavedCv(), readCvCloudStorageConsent()]);
           check();
-          return !!(personal || skills || plan.length || Object.keys(learningProgress).length || professionalCertifications.length || cv || (await readInterviewHistory()).length || await readJobTarget());
+          return !!(personal || skills || plan.length || Object.keys(learningProgress).length || professionalCertifications.length || (cvStorageEnabled && cv) || (await readInterviewHistory()).length || await readJobTarget());
         },
         prepareUpload: async () => {
           const [data, metadata] = await Promise.all([localData(), meta()]);
-          const { personal, skills, plan, learningProgress, professionalCertifications, cv: saved, interviews } = data;
+          const { personal, skills, plan, learningProgress, professionalCertifications, cv: localCv, cvStorageEnabled, interviews } = data;
+          const saved = cvStorageEnabled ? localCv : null;
           check();
           let cv: CloudSnapshot['cv'] = null;
           let binding: CloudMeta['fileBinding'] = null;
@@ -80,7 +82,7 @@ export function createCloudRuntime(getSession: () => Session | null, onRestoring
             cv = { path, name: saved.asset.name, size, mimeType: saved.asset.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', review: saved.review };
             binding = { identity: saved.file_id!, path };
           }
-          const snapshot = parseCloudSnapshot({ version: 1, personal, skills, plan, learningProgress, professionalCertifications, cv, interviews, jobTarget: data.jobTarget }, owner);
+          const snapshot = parseCloudSnapshot({ version: 1, personal, skills, plan, learningProgress, professionalCertifications, cvStorageEnabled, cv, interviews, jobTarget: data.jobTarget }, owner);
           return { snapshot, localState: describeLocal(data), binding, cleanup: async () => { if (createdPath) await client.storage.from('masarak-cvs').remove([createdPath]); } };
         },
         saveRemote: async (snapshot, expected) => {
@@ -96,15 +98,15 @@ export function createCloudRuntime(getSession: () => Session | null, onRestoring
           let downloaded: Awaited<ReturnType<typeof downloadCloudCv>> | null = null;
           try {
             const before = (await meta()).localVersion;
-            if (snapshot.cv) downloaded = await downloadCloudCv(client, snapshot.cv, lifetime.signal);
+            if (snapshot.cvStorageEnabled && snapshot.cv) downloaded = await downloadCloudCv(client, snapshot.cv, lifetime.signal);
             check();
             if ((await meta()).localVersion !== before) throw new Error('Local data changed during download');
             // Cancel old file-analysis responses and queued edits before applying another device's snapshot.
             invalidateDataScope(); scope = captureDataScope(); check();
             return await withoutChangeTracking(owner, async () => {
-              const staged = await prepareSavedCvRestore(downloaded?.asset ?? null, snapshot.cv?.review ?? null);
+              const staged = snapshot.cvStorageEnabled ? await prepareSavedCvRestore(downloaded?.asset ?? null, snapshot.cv?.review ?? null) : null;
               try {
-                const saved = await staged.commit(); check();
+                const saved = staged ? await staged.commit() : await loadSavedCv(); check();
                 await replaceScopedItems([
                   [PERSONAL_PROFILE_KEY, snapshot.personal ? JSON.stringify(snapshot.personal) : null],
                   [SKILL_PROFILE_KEY, snapshot.skills ? JSON.stringify(snapshot.skills) : null],
@@ -112,11 +114,12 @@ export function createCloudRuntime(getSession: () => Session | null, onRestoring
                   [LEARNING_PROGRESS_KEY, JSON.stringify(snapshot.learningProgress)],
                   [PROFESSIONAL_CERTIFICATIONS_KEY, JSON.stringify(snapshot.professionalCertifications)],
                   [INTERVIEW_HISTORY_KEY, JSON.stringify(snapshot.interviews ?? [])],
+                  [CV_CLOUD_STORAGE_KEY, JSON.stringify(snapshot.cvStorageEnabled)],
                   ...(snapshot.jobTarget !== undefined ? [[JOB_TARGET_KEY, snapshot.jobTarget ? JSON.stringify(snapshot.jobTarget) : null] as [string, string | null]] : []),
                 ], scope);
-                check(); await staged.finish().catch(() => undefined);
-                return { binding: saved && snapshot.cv ? { identity: saved.file_id!, path: snapshot.cv.path } : null, localState: describeLocal(await localData()) };
-              } catch (error) { await staged.rollback(); throw error; }
+                check(); await staged?.finish().catch(() => undefined);
+                return { binding: snapshot.cvStorageEnabled && saved && snapshot.cv ? { identity: saved.file_id!, path: snapshot.cv.path } : null, localState: describeLocal(await localData()) };
+              } catch (error) { await staged?.rollback(); throw error; }
             });
           } finally { await downloaded?.cleanup(); onRestoring(false); }
         },

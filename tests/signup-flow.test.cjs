@@ -41,8 +41,10 @@ function harness(mode = 'signup') {
     'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     '../components/masarak-brand': { MasarakBrand: 'MasarakBrand' },
     '../components/masarak-icon': { MasarakIcon: 'MasarakIcon' },
-    '../constants/design': { colors: {}, ui: {} },
+    '../constants/design': { colors: {}, ui: {}, createAdaptiveStyles: factory => factory() },
     '../contexts/auth-context': { useAuth: () => auth },
+    '../contexts/app-preferences-context': { useAppPreferences: () => ({ language: 'ar' }) },
+    '../utils/admin-api': { AdminRequestError: class AdminRequestError extends Error {}, adminRequest: async () => { throw Object.assign(new Error('Not an admin in this fixture'), { status: 403 }); } },
     '../utils/supabase': { supabase: { auth: api } },
   };
   class ClockDate extends Date { static now() { return clock; } }
@@ -161,5 +163,5 @@ test('unconfirmed users can resume confirmation, while ordinary login stays pass
   await h.press('تسجيل الدخول');
   assert.equal(h.calls.login.length, 1);
   assert.equal(h.calls.verify.length, 0);
-  assert.equal(h.completed(), 1);
+  assert.equal(h.completed(), 0, 'the auth context completes navigation after Supabase emits the new session');
 });

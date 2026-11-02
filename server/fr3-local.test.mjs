@@ -160,7 +160,7 @@ test('durations use only sufficient employment ranges, show annual approximation
 test('provider schema compatibility never reintroduces section titles as skills', () => {
   const source = 'Projects: Campus Portal\nEducation: College of Computing\nSkills: Python';
   const skills = ['Campus Portal', 'College of Computing', 'Python'].map(name => ({ name, evidence: name, mapped_skill_id: null }));
-  const result = validateAnalysis({ skills, projects: [{ name: 'Campus Portal', organization: '', dates: '', description: '', evidence: 'Campus Portal' }], education: [], experiences: [], certificates: [], activities: [] }, source);
+  const result = validateAnalysis({ skills, projects: [{ name: 'Campus Portal', organization: '', dates: '', duration: '', description: '', evidence: 'Campus Portal' }], education: [], experiences: [], certificates: [], activities: [] }, source);
   assert.deepEqual(result.skills.map(item => item.name), ['Python']);
   assert.deepEqual(result.courses, []);
 });

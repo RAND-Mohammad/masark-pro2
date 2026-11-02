@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CloudCard } from '../components/cloud-card';
 import { DisclosureCard } from '../components/disclosure-card';
-import { colors, ui } from '../constants/design';
+import { colors, ui, createAdaptiveStyles} from '../constants/design';
 import { jobPaths, resolveBaseCareerId, type JobPath } from '../constants/job-paths';
 import { useInterview } from '../hooks/use-interview';
 import { usePersonalProfile } from '../hooks/use-personal-profile';
+import { useAppPreferences } from '../contexts/app-preferences-context';
 import type { InterviewQuestion } from '../data/interview-bank.mjs';
 import type { InterviewResult } from '../utils/interview-types';
+import type { InterviewPracticeType } from '../utils/interview-api';
 
 type Language = 'ar' | 'en';
 const validCareer = (value: string | undefined) => {
@@ -30,15 +32,21 @@ const familyNames: Record<string, { ar: string; en: string }> = {
 const copy = {
   ar: {
     eyebrow: 'تدريب عملي · خطوة بخطوة', title: 'تدرّب على شرح طريقة تفكيرك',
-    intro: 'أسئلة تدريبية منتقاة لمسارات الحوسبة. ليست من بنك مقابلات شركة، ولا تتنبأ بالتوظيف أو تثبت كفاءة.',
+    intro: 'تدريب بأسئلة منتقاة أو مولّدة لمسارات الحوسبة. ليست من بنك شركة، ولا تتنبأ بالتوظيف أو تثبت كفاءة.',
     language: 'اللغة', arabic: 'العربية', english: 'English', role: 'اختر المسار الوظيفي',
-    search: 'ابحث عن مسمى وظيفي أو تخصص', curated: 'الأسئلة المنتقاة', question: 'اختر سؤالًا للتدرب',
+    search: 'ابحث عن مسمى وظيفي', curated: 'الأسئلة المنتقاة', question: 'اختر سؤالًا للتدرب',
+    questionType: 'نوع التدريب', technical: 'تقني', behavioral: 'سلوكي', generateTitle: 'ولّد أسئلة ملائمة لمسارك',
+    generateDescription: 'بعد موافقتك، نرسل المسار الوظيفي ونوع التدريب فقط إلى Groq. لا نرسل سيرتك أو بيانات حسابك.',
+    generateConsent: 'أوافق على إرسال المسار الوظيفي ونوع التدريب فقط إلى Groq لتوليد الأسئلة.', generateAction: 'توليد 3 أسئلة جديدة',
+    generatedTitle: 'أسئلة مولّدة لمسارك', curatedTitle: 'أسئلة تدريبية منتقاة', generatedType: 'نوع الأسئلة المولّدة',
+    generateSignIn: 'سجّل الدخول لتوليد أسئلة للمسار. الأسئلة المنتقاة متاحة دون حساب.',
+    generateUnavailable: 'توليد الأسئلة بالذكاء الاصطناعي غير مهيأ حاليًا؛ يمكنك استخدام الأسئلة المنتقاة.',
     concepts: 'أفكار قد تساعدك في الإجابة', answer: 'إجابتك', answerPlaceholder: 'اكتب إجابتك بأسلوبك، واذكر مثالًا حقيقيًا أو وضّح إن كان افتراضيًا.',
     characters: 'حرفًا', submit: 'قيّم إجابتي محليًا', submitAi: 'قيّم إجابتي بالذكاء الاصطناعي',
     guest: 'جرّب الأسئلة دون حساب. التقييم وحفظ النتيجة يتطلبان تسجيل الدخول.',
     signIn: 'تسجيل الدخول أو إنشاء حساب', aiTitle: 'تقييم اختياري بمساعدة الذكاء الاصطناعي',
-    aiConsent: 'أوافق على إرسال نص إجابتي فقط إلى مزوّد الذكاء الاصطناعي لتقييمها. لن أضمّن بيانات شخصية.',
-    aiUnavailable: 'التقييم المتاح حاليًا محلي؛ لم يتم إعداد خدمة الذكاء الاصطناعي لهذا المسار.',
+    aiConsent: 'أوافق على إرسال نص إجابتي وسؤال التدريب ومفاهيمه المرجعية فقط إلى Groq لتقييمها. لن أضمّن بيانات شخصية.',
+    aiUnavailable: 'التقييم المحلي متاح؛ لم تُهيأ خدمة Groq للتوليد والتقييم.',
     localNote: 'التقييم المحلي يستخدم إشارات نصية إرشادية، وقد لا يفهم السياق أو الصياغات البديلة.',
     history: 'سجل تدريبي خاص بهذا الجهاز أو الحساب', historyLimit: 'يُحفظ حتى 100 تقييم. عند بلوغ الحد، لا يمكن حفظ تقييم جديد حتى تحذف سجلًا.',
     noHistory: 'لا توجد نتائج بعد. اختر سؤالًا واكتب إجابتك لتبدأ.',
@@ -56,15 +64,21 @@ const copy = {
   },
   en: {
     eyebrow: 'Practice, one step at a time', title: 'Practice explaining how you think',
-    intro: 'Curated practice questions for computing paths. They are not a company interview bank, a hiring prediction, or proof of competency.',
+    intro: 'Curated or generated practice for computing paths. These are not company interview questions, hiring predictions, or proof of competency.',
     language: 'Language', arabic: 'العربية', english: 'English', role: 'Choose a career path',
-    search: 'Search job title or major', curated: 'Curated practice', question: 'Choose a question',
+    search: 'Search job titles', curated: 'Curated practice', question: 'Choose a question',
+    questionType: 'Practice type', technical: 'Technical', behavioral: 'Behavioral', generateTitle: 'Generate questions for this path',
+    generateDescription: 'With your consent, only the selected career and practice type are sent to Groq. Your CV and account details are not sent.',
+    generateConsent: 'I agree to send only the selected career and practice type to Groq to generate questions.', generateAction: 'Generate 3 new questions',
+    generatedTitle: 'Questions generated for your path', curatedTitle: 'Curated practice questions', generatedType: 'Generated question type',
+    generateSignIn: 'Sign in to generate path-specific questions. Curated questions remain available without an account.',
+    generateUnavailable: 'AI question generation is not configured. You can use the curated questions.',
     concepts: 'Ideas that may help your answer', answer: 'Your answer', answerPlaceholder: 'Write in your own words. Use a real example, or say clearly when it is hypothetical.',
     characters: 'characters', submit: 'Evaluate locally', submitAi: 'Evaluate with AI',
     guest: 'Explore questions without an account. Sign in is required to evaluate and save a result.',
     signIn: 'Sign in or create an account', aiTitle: 'Optional AI-assisted evaluation',
-    aiConsent: 'I agree to send only my answer text to the AI provider for evaluation. I will not include personal data.',
-    aiUnavailable: 'Local evaluation is available; AI service is not configured for this path.',
+    aiConsent: 'I agree to send only my answer, practice question, and reference concepts to Groq for evaluation. I will not include personal data.',
+    aiUnavailable: 'Local evaluation is available; Groq generation and evaluation are not configured.',
     localNote: 'Local evaluation uses indicative text signals and may miss context or alternate wording.',
     history: 'Practice history for this device or account', historyLimit: 'Up to 100 evaluations are kept. At the limit, delete a record before another can be saved.',
     noHistory: 'No results yet. Choose a question and write an answer to begin.',
@@ -96,14 +110,17 @@ function initialPathId(routeCareer: string, goal: string | null | undefined) {
 export default function InterviewScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ careerId?: string | string[]; id?: string | string[]; language?: string }>();
+  const preferences = useAppPreferences();
   const routeParam = Array.isArray(params.careerId) ? params.careerId[0] : params.careerId
     ?? (Array.isArray(params.id) ? params.id[0] : params.id) ?? '';
   const profileState = usePersonalProfile();
-  const [language, setLanguage] = useState<Language>(params.language === 'en' ? 'en' : 'ar');
+  const [language, setLanguage] = useState<Language>(() => params.language === 'en' ? 'en' : params.language === 'ar' ? 'ar' : preferences.language);
   const [selectedPathOverride, setSelectedPathOverride] = useState(() => initialPathId(routeParam, null));
   const [touchedRole, setTouchedRole] = useState(false);
   const [rolePickerOpen, setRolePickerOpen] = useState(false);
   const [roleSearch, setRoleSearch] = useState('');
+  const [questionType, setQuestionType] = useState<InterviewPracticeType>('technical');
+  const [generationConsent, setGenerationConsent] = useState(false);
   const [draft, setDraft] = useState({ key: '', questionId: '', answer: '', aiConsent: false });
   const [selectedHistory, setSelectedHistory] = useState<InterviewResult | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState('');
@@ -129,7 +146,7 @@ export default function InterviewScreen() {
   const visiblePaths = useMemo(() => {
     const query = roleSearch.trim().toLocaleLowerCase();
     if (!query) return jobPaths;
-    return jobPaths.filter(item => `${item.title} ${item.majors.join(' ')}`.toLocaleLowerCase().includes(query));
+    return jobPaths.filter(item => item.title.toLocaleLowerCase().includes(query));
   }, [roleSearch]);
   const questions = interview.questions;
   const selectedQuestion = questions.find(item => item.id === currentDraft.questionId) ?? questions[0];
@@ -143,6 +160,8 @@ export default function InterviewScreen() {
     setSelectedPathOverride(item.id);
     setRolePickerOpen(false);
     setRoleSearch('');
+    setQuestionType('technical');
+    setGenerationConsent(false);
     setSelectedHistory(null);
     setConfirmDeleteId('');
   }
@@ -150,13 +169,14 @@ export default function InterviewScreen() {
   function selectLanguage(next: Language) {
     if (!interview.busy && language !== next) {
       setLanguage(next);
+      setGenerationConsent(false);
       setSelectedHistory(null);
       setConfirmDeleteId('');
     }
   }
 
   function openSignIn() {
-    router.push({ pathname: '/account', params: { mode: 'login' } });
+    router.push({ pathname: '/account', params: { mode: 'login', redirect: '/interview' } });
   }
 
   function retry() {
@@ -170,6 +190,14 @@ export default function InterviewScreen() {
     if (answer.length > 6000) return;
     const useAi = interview.aiConfigured && aiConsent;
     await interview.submit(selectedQuestion.id, answer.trim(), useAi, useAi);
+    setSelectedHistory(null);
+  }
+
+  async function generateQuestions() {
+    const generated = await interview.generate(questionType, generationConsent);
+    if (!generated) return;
+    setDraft({ key: contextKey, questionId: '', answer: '', aiConsent: false });
+    setGenerationConsent(false);
     setSelectedHistory(null);
   }
 
@@ -257,7 +285,7 @@ export default function InterviewScreen() {
         <Text style={[ui.heading, { textAlign }]}>{t.role}</Text>
         <Pressable accessibilityRole="button" accessibilityState={{ expanded: rolePickerOpen, disabled: interview.busy }} disabled={interview.busy} onPress={() => setRolePickerOpen(value => !value)} style={[styles.selectedPath, { flexDirection: rowDirection }]}>
           <View style={styles.pathBadge}><Text style={styles.pathBadgeText}>{careerId}</Text></View>
-          <View style={styles.pathCopy}><Text style={[styles.pathTitle, { textAlign }]}>{path.title}</Text><Text style={[styles.note, { textAlign }]}>{path.majors.slice(0, 2).join(' · ')}</Text></View>
+          <View style={styles.pathCopy}><Text style={[styles.pathTitle, { textAlign }]}>{path.title}</Text><Text style={[styles.note, { textAlign }]}>{familyNames[path.baseCareerId]?.[language] ?? path.baseCareerId}</Text></View>
           <Text style={styles.chevron}>{rolePickerOpen ? '−' : '+'}</Text>
         </Pressable>
         {rolePickerOpen && <>
@@ -266,24 +294,37 @@ export default function InterviewScreen() {
             {visiblePaths.length ? visiblePaths.map(item => {
               const selected = item.id === path.id;
               return <Pressable key={item.id} accessibilityRole="button" accessibilityState={{ selected, disabled: interview.busy }} disabled={interview.busy} onPress={() => choosePath(item)} style={[styles.pathOption, selected && styles.pathOptionSelected, { flexDirection: rowDirection }]}>
-                <View style={styles.pathOptionText}><Text style={[styles.pathTitle, { textAlign }]}>{item.title}</Text><Text style={[styles.note, { textAlign }]}>{familyNames[item.baseCareerId]?.[language] ?? item.baseCareerId} · {item.majors[0]}</Text></View>
+                <View style={styles.pathOptionText}><Text style={[styles.pathTitle, { textAlign }]}>{item.title}</Text><Text style={[styles.note, { textAlign }]}>{familyNames[item.baseCareerId]?.[language] ?? item.baseCareerId}</Text></View>
                 {selected && <Text style={styles.selectedMark}>✓</Text>}
               </Pressable>;
             }) : <Text style={[styles.note, { textAlign }]}>{language === 'ar' ? 'لا توجد نتائج مطابقة.' : 'No matching paths.'}</Text>}
           </ScrollView>
         </>}
-        <View style={styles.pathSummary}><Text style={[styles.note, { textAlign }]}>{familyNames[careerId]?.[language]} · {language === 'ar' ? 'تدريب من أسئلة منتقاة' : 'curated question practice'}</Text></View>
+        <View style={styles.pathSummary}><Text style={[styles.note, { textAlign }]}>{familyNames[careerId]?.[language]} · {interview.questionSource === 'groq-adaptive' ? `${t.generatedTitle} · ${interview.generatedType === 'behavioral' ? t.behavioral : t.technical}` : t.curatedTitle}</Text></View>
       </View>
 
+      {interview.signedIn && interview.aiConfigured ? <View style={styles.aiOptIn}>
+        <Text style={[styles.sectionLabel, { textAlign }]}>{t.generateTitle}</Text>
+        <Text style={[styles.body, { textAlign }]}>{t.generateDescription}</Text>
+        <Text style={[styles.sectionLabel, { textAlign }]}>{t.questionType}</Text>
+        <View style={[styles.languageSwitch, { flexDirection: rowDirection }]}>
+          {(['technical', 'behavioral'] as const).map(type => <Pressable key={type} accessibilityRole="radio" accessibilityState={{ selected: questionType === type, disabled: interview.busy }} disabled={interview.busy} onPress={() => { setQuestionType(type); setGenerationConsent(false); }} style={[styles.languageButton, questionType === type && styles.languageActive]}><Text style={[styles.languageText, questionType === type && styles.languageTextActive]}>{t[type]}</Text></Pressable>)}
+        </View>
+        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: generationConsent, disabled: interview.busy }} disabled={interview.busy} onPress={() => setGenerationConsent(value => !value)} style={[styles.consentRow, { flexDirection: rowDirection }]}>
+          <View style={[styles.checkbox, generationConsent && styles.checkboxSelected]}><Text style={styles.checkboxMark}>{generationConsent ? '✓' : ''}</Text></View><Text style={[styles.body, { textAlign, flex: 1 }]}>{t.generateConsent}</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: !generationConsent || interview.busy }} disabled={!generationConsent || interview.busy} onPress={() => void generateQuestions()} style={[ui.button, (!generationConsent || interview.busy) && styles.disabledButton]}><Text style={ui.buttonText}>{interview.busy ? '…' : t.generateAction}</Text></Pressable>
+      </View> : !interview.signedIn ? <View style={styles.guestNotice}><Text style={[styles.body, { textAlign }]}>{t.generateSignIn}</Text><Pressable accessibilityRole="button" onPress={openSignIn} style={ui.outline}><Text style={ui.outlineText}>{t.signIn}</Text></Pressable></View> : <Text style={[styles.note, { textAlign }]}>{t.generateUnavailable}</Text>}
+
       <View style={styles.sectionIntro}>
-        <Text style={[ui.heading, { textAlign }]}>{t.curated}</Text>
-        <Text style={[ui.note, { textAlign }]}>{language === 'ar' ? 'تمرين تعليمي عام، وليس أسئلة شركة بعينها.' : 'General learning practice, not questions from a specific employer.'}</Text>
+        <Text style={[ui.heading, { textAlign }]}>{interview.questionSource === 'groq-adaptive' ? t.generatedTitle : t.curatedTitle}</Text>
+        <Text style={[ui.note, { textAlign }]}>{interview.questionSource === 'groq-adaptive' ? `${t.generatedType}: ${interview.generatedType === 'behavioral' ? t.behavioral : t.technical}.` : language === 'ar' ? 'تمرين تعليمي عام، وليس أسئلة شركة بعينها.' : 'General learning practice, not questions from a specific employer.'}</Text>
       </View>
       {interview.loading ? <View style={ui.card}><View style={styles.skeletonWide} /><View style={styles.skeletonShort} /><View style={styles.skeletonWide} /></View> : questions.length === 0 ? <View style={ui.card}><Text style={[ui.text, { textAlign }]}>{t.noQuestions}</Text></View> : <View style={styles.questionList}>
-        {questions.map(question => {
+        {questions.map((question, questionIndex) => {
           const active = selectedQuestion?.id === question.id;
           return <Pressable key={question.id} accessibilityRole="button" accessibilityState={{ selected: active, disabled: interview.busy }} disabled={interview.busy} onPress={() => { if (!active) updateDraft({ questionId: question.id, answer: '', aiConsent: false }); setSelectedHistory(null); }} style={({ pressed }) => [styles.questionCard, active && styles.questionActive, pressed && ui.pressed]}>
-            <View style={[styles.questionHeader, { flexDirection: rowDirection }]}><Text style={styles.questionNumber}>{question.id.split('-').slice(-1)[0].toUpperCase()}</Text><Text style={[styles.questionPrompt, { textAlign }]}>{questionLabel(question)}</Text></View>
+            <View style={[styles.questionHeader, { flexDirection: rowDirection }]}><Text style={styles.questionNumber}>{questionIndex + 1}</Text><Text style={[styles.questionPrompt, { textAlign }]}>{questionLabel(question)}</Text></View>
             {active && <><Text style={[styles.conceptLabel, { textAlign }]}>{t.concepts}</Text><View style={[styles.concepts, { flexDirection: rowDirection }]}>{rubricConcepts(question).map((concept, index) => <View key={`${concept}-${index}`} style={styles.conceptPill}><Text style={styles.conceptText}>{concept}</Text></View>)}</View></>}
           </Pressable>;
         })}
@@ -315,6 +356,9 @@ export default function InterviewScreen() {
       {interview.error ? <View style={styles.errorBox}><Text style={[styles.errorTitle, { textAlign }]}>{t.errorTitle}</Text><Text accessibilityRole="alert" style={[styles.errorText, { textAlign }]}>{interview.error}</Text><Pressable accessibilityRole="button" disabled={interview.busy} onPress={retry} style={ui.outline}><Text style={ui.outlineText}>{t.retry}</Text></Pressable></View> : null}
       {activeResult && <View><Text style={[ui.heading, { textAlign }]}>{language === 'ar' ? 'نتيجتك' : 'Your result'}</Text>{renderResult(activeResult)}</View>}
 
+      <Pressable accessibilityRole="button" onPress={() => router.push('/interview-history' as never)} style={ui.outline}>
+        <Text style={ui.outlineText}>{language === 'ar' ? `عرض سجل التدريب (${interview.history.length})` : `View practice history (${interview.history.length})`}</Text>
+      </Pressable>
       <DisclosureCard title={t.history} subtitle={interview.history.length ? `${interview.history.length} ${language === 'ar' ? 'نتيجة محفوظة' : 'saved results'}` : language === 'ar' ? 'نتائجك السابقة' : 'Your previous results'} summary={interview.history.length ? (language === 'ar' ? 'اضغط لعرض إجاباتك وتقييماتها السابقة' : 'Open to review your earlier answers and feedback') : t.noHistory} status={interview.history.length ? `${interview.history.length}/100` : language === 'ar' ? 'فارغ' : 'Empty'}>
         <Text style={[ui.note, { textAlign }]}>{t.historyLimit}</Text>
         {interview.loading ? <View style={ui.card}><View style={styles.skeletonWide} /><View style={styles.skeletonShort} /></View> : interview.history.length === 0 ? <View style={styles.emptyHistory}><Text style={[styles.emptyMark]}>—</Text><Text style={[ui.text, { textAlign }]}>{t.noHistory}</Text></View> : <View style={styles.historyList}>{interview.history.slice(0, 100).map(renderHistoryItem)}</View>}
@@ -324,7 +368,7 @@ export default function InterviewScreen() {
   </SafeAreaView>;
 }
 
-const styles = StyleSheet.create({
+const styles = createAdaptiveStyles(() => ({
   topline: { alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   back: { paddingVertical: 8, paddingHorizontal: 10 },
   backText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
@@ -334,7 +378,7 @@ const styles = StyleSheet.create({
   languageText: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   languageTextActive: { color: colors.primary },
   hero: { gap: 7, paddingTop: 7 },
-  privacyNote: { backgroundColor: '#EEF2E7', borderRadius: 15, paddingHorizontal: 14, paddingVertical: 12 },
+  privacyNote: { backgroundColor: colors.mint, borderRadius: 15, paddingHorizontal: 14, paddingVertical: 12 },
   privacyText: { color: colors.muted, fontSize: 12, lineHeight: 19 },
   selectedPath: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.soft, padding: 13, borderRadius: 15, alignItems: 'center', gap: 11 },
   pathBadge: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.mint },
@@ -351,7 +395,7 @@ const styles = StyleSheet.create({
   sectionIntro: { gap: 4 },
   questionList: { gap: 10 },
   questionCard: { borderRadius: 18, padding: 16, gap: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  questionActive: { borderColor: colors.primary, backgroundColor: '#F1F6F1' },
+  questionActive: { borderColor: colors.primary, backgroundColor: colors.soft },
   questionHeader: { alignItems: 'flex-start', gap: 11 },
   questionNumber: { minWidth: 29, height: 29, paddingHorizontal: 5, borderRadius: 10, overflow: 'hidden', textAlign: 'center', textAlignVertical: 'center', backgroundColor: colors.mint, color: colors.primary, fontSize: 10, fontWeight: '700', lineHeight: 29 },
   questionPrompt: { flex: 1, color: colors.ink, fontSize: 15, lineHeight: 24, fontWeight: '600' },
@@ -363,7 +407,7 @@ const styles = StyleSheet.create({
   counter: { fontSize: 11, color: colors.muted, marginTop: -8 },
   guestNotice: { gap: 6, padding: 13, backgroundColor: colors.mint, borderRadius: 15 },
   body: { color: colors.muted, fontSize: 14, lineHeight: 22 },
-  aiOptIn: { gap: 9, borderWidth: 1, borderColor: colors.border, borderRadius: 15, padding: 13, backgroundColor: '#F7F4EB' },
+  aiOptIn: { gap: 9, borderWidth: 1, borderColor: colors.border, borderRadius: 15, padding: 13, backgroundColor: colors.warningSurface },
   consentRow: { alignItems: 'flex-start', gap: 10 },
   checkbox: { width: 23, height: 23, borderRadius: 7, borderColor: colors.border, borderWidth: 1, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   checkboxSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
@@ -371,7 +415,7 @@ const styles = StyleSheet.create({
   note: { color: colors.muted, fontSize: 12, lineHeight: 20 },
   validation: { color: colors.error, fontSize: 12, lineHeight: 18 },
   disabledButton: { opacity: 0.48 },
-  errorBox: { backgroundColor: '#F8ECE9', borderColor: '#E9C7C0', borderWidth: 1, borderRadius: 17, padding: 16, gap: 9 },
+  errorBox: { backgroundColor: colors.errorSurface, borderColor: colors.errorBorder, borderWidth: 1, borderRadius: 17, padding: 16, gap: 9 },
   errorTitle: { color: colors.error, fontSize: 15, fontWeight: '700' },
   errorText: { color: colors.error, fontSize: 13, lineHeight: 21 },
   resultCard: { backgroundColor: colors.surface, borderRadius: 20, borderWidth: 1, borderColor: colors.border, padding: 17, gap: 11 },
@@ -379,7 +423,7 @@ const styles = StyleSheet.create({
   resultQuestion: { color: colors.ink, flex: 1, fontSize: 14, lineHeight: 22, fontWeight: '600' },
   modeBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8 },
   localBadge: { backgroundColor: colors.mint },
-  aiBadge: { backgroundColor: '#F3EBD5' },
+  aiBadge: { backgroundColor: colors.warningSurface },
   modeText: { fontSize: 10, color: colors.ink, fontWeight: '700', letterSpacing: 0.6 },
   scoreLine: { alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderColor: colors.border, paddingTop: 11 },
   scoreLabel: { color: colors.muted, fontSize: 13 },
@@ -393,11 +437,11 @@ const styles = StyleSheet.create({
   historyButton: { padding: 14, gap: 7 },
   historyMeta: { alignItems: 'center', justifyContent: 'space-between' },
   modeSmall: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-  aiText: { color: '#826B30' },
+  aiText: { color: colors.gold },
   localText: { color: colors.primary },
   historyScore: { color: colors.primary, fontWeight: '700', fontSize: 15 },
   historyQuestion: { color: colors.ink, fontSize: 14, lineHeight: 22 },
-  confirmBox: { backgroundColor: '#F8ECE9', padding: 14, gap: 12, borderTopWidth: 1, borderTopColor: '#E9C7C0' },
+  confirmBox: { backgroundColor: colors.errorSurface, padding: 14, gap: 12, borderTopWidth: 1, borderTopColor: colors.errorBorder },
   actionRow: { gap: 9 },
   smallAction: { flex: 1 },
   deleteButton: { paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border },
@@ -406,4 +450,4 @@ const styles = StyleSheet.create({
   emptyMark: { color: colors.gold, fontWeight: '700', fontSize: 26 },
   skeletonWide: { height: 18, width: '88%', borderRadius: 8, backgroundColor: colors.soft },
   skeletonShort: { height: 13, width: '55%', borderRadius: 7, backgroundColor: colors.soft },
-});
+}));

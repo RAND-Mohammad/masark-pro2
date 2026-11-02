@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import { once } from 'node:events';
-import { createJobsRouter, createJobsService, normalizeJob } from './jobs.mjs';
+import { createJobsRouter, createJobsService, createJobsRefreshScheduler, jobSearches, normalizeJob } from './jobs.mjs';
 
 const time = Date.parse('2026-10-26T10:00:00Z');
 function job(id = 'test-job') {
@@ -65,6 +65,8 @@ test('provider failures redact credentials and apply cooldown; no stale success'
   } });
   for (let i = 0; i < 2; i++) await assert.rejects(service('software'), error => error.status === 503 && !error.message.includes('secret'));
   assert.equal(calls, 1);
+  assert.equal(service.status().categories.software.lastErrorAt, new Date(time).toISOString());
+  assert.equal(service.status().categories.software.retryAt, new Date(time + 60000).toISOString());
 });
 test('missing configuration, invalid search and invalid response fail closed', async () => {
   let called = false;
@@ -88,4 +90,40 @@ test('route authenticates first and disallows arbitrary upstream parameters', as
   assert.equal(called, 0);
   assert.equal((await fetch(`${url}?category=software`, { headers })).status, 200);
   assert.equal(called, 1);
+});
+
+test('refresh scheduler loads the saved interval, refreshes real categories, and can be paused', async () => {
+  let currentTimer;
+  let calls = [];
+  const timerCalls = [];
+  const scheduler = createJobsRefreshScheduler({
+    service: { refresh: async category => { calls.push(category); return { jobs: [job()], fetchedAt: new Date(time).toISOString() }; } },
+    getKey: () => 'test-only-key',
+    loadSchedule: async () => ({ enabled: true, intervalHours: 12 }),
+    now: () => time,
+    startupDelayMs: 1000,
+    setTimeoutFn: (callback, delayMs) => { const timer = { callback, delayMs, unref() {} }; currentTimer = timer; timerCalls.push(timer); return timer; },
+    clearTimeoutFn: timer => { if (currentTimer === timer) currentTimer = null; },
+  });
+
+  const initial = await scheduler.start();
+  assert.equal(initial.intervalHours, 12);
+  assert.equal(initial.enabled, true);
+  assert.equal(currentTimer.delayMs, 1000);
+  await currentTimer.callback();
+  assert.deepEqual(calls, Object.keys(jobSearches));
+  assert.deepEqual(scheduler.status().lastResult, { succeeded: Object.keys(jobSearches).length, failed: 0 });
+  assert.equal(currentTimer.delayMs, 12 * 3600000);
+  assert.equal(scheduler.status().nextRunAt, new Date(time + 12 * 3600000).toISOString());
+
+  scheduler.updateSchedule({ enabled: false, intervalHours: 12 });
+  assert.equal(currentTimer, null);
+  assert.equal(scheduler.status().nextRunAt, null);
+  scheduler.stop();
+  assert.equal(timerCalls.length, 2);
+});
+
+test('scheduler rejects intervals below the provider refresh floor', () => {
+  const scheduler = createJobsRefreshScheduler({ getKey: () => '' });
+  assert.throws(() => scheduler.updateSchedule({ enabled: true, intervalHours: 1 }), { status: 400 });
 });

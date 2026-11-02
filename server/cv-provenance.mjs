@@ -1,6 +1,6 @@
 import { findSourceExcerpt } from './evidence-match.mjs';
 import { plainLayoutText } from './layout-reader.mjs';
-import { isStudyStatusSupported } from './resume-field-rules.mjs';
+import { hasAmbiguousEducationPair, isStudyStatusSupported } from './resume-field-rules.mjs';
 
 // Page locations come from the PDF reader, never from model assertions.
 function pagesForQuote(source, quote, record) {
@@ -75,6 +75,11 @@ export function associatedRecordQuote(section, item, scopedSource, localRecords)
   const visible = plainLayoutText(scopedSource);
   const label = section === 'experiences' ? item.role : item.name;
   let quote = findSourceExcerpt(visible, item.evidence);
+  if (section === 'education' && quote && hasAmbiguousEducationPair(quote)) return null;
+  if (section === 'education' && quote && scopedSource.split('\n').some(row => {
+    const plainRow = plainLayoutText(row).trim();
+    return plainRow && findSourceExcerpt(quote, plainRow) && hasAmbiguousEducationPair(row);
+  })) return null;
   const records = localRecords[section] ?? [];
   const matches = records.filter(row => {
     const localLabel = section === 'experiences' ? row.role : row.name;

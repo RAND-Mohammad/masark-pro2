@@ -33,6 +33,16 @@ async function setup(platform, { fail = false, fileAvailable = true } = {}) {
   await h.flush();
   return { h, calls, fresh, approved, latest: () => stored };
 }
+async function expandEditedProject(h) {
+  await h.act(nodes => {
+    const section = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('المشاريع'));
+    if (section && !section.props.accessibilityState?.expanded) section.props.onPress();
+  });
+  await h.act(nodes => {
+    const details = nodes.find(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('عرض التفاصيل والتعديل: عنوان صححه المستخدم'));
+    if (details && !details.props.accessibilityState?.expanded) details.props.onPress();
+  });
+}
 for (const platform of ['web', 'android', 'ios']) test(`${platform}: stale results require consent and confirmation, protect manual edits, restore and approve explicitly`, async t => {
   const { h, calls, approved, latest } = await setup(platform);
   t.after(h.dispose);
@@ -43,17 +53,19 @@ for (const platform of ['web', 'android', 'ios']) test(`${platform}: stale resul
   await h.press('إعادة التحليل');
   assert.equal(calls.analyze, 0, 'confirmation must not send a request');
   await h.press('إلغاء إعادة التحليل');
+  await expandEditedProject(h);
   assert.equal(h.input('اسم المشروع').props.value, 'عنوان صححه المستخدم');
   await h.press('إعادة التحليل');
   await h.press('إعادة التحليل مع الحفاظ على تعديلاتي');
   assert.equal(calls.analyze, 1);
   assert.equal(calls.profiles.length, 0, 'reanalysis must not overwrite the approved profile');
+  await expandEditedProject(h);
   assert.equal(h.input('اسم المشروع').props.value, 'عنوان صححه المستخدم');
-  assert.ok(h.text().includes('احتُفظ بهذا البند من مراجعتك السابقة'));
+  assert.ok(h.text().includes('احتفظنا بتعديلاتك واستبعاداتك السابقة'));
   assert.equal(latest().previous_review.analysis.parser_version, undefined);
   assert.equal(latest().analysis.parser_version, h.module('../utils/cv-parser-version.mjs').CV_PARSER_VERSION);
   await h.press('عرض المراجعة السابقة');
-  assert.ok(h.text().includes('نسخة سابقة للقراءة فقط'));
+  assert.ok(h.text().includes('نسخة سابقة · للعرض والاستعادة'));
   await h.press('استعادة هذه المراجعة');
   assert.equal(latest().analysis.parser_version, undefined);
   await h.press('عرض المراجعة السابقة');

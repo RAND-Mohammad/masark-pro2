@@ -1,24 +1,27 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, ui } from '../constants/design';
+import { Pressable, Text, View } from 'react-native';
+import { colors, ui, createAdaptiveStyles} from '../constants/design';
 import { MasarakIcon } from './masarak-icon';
 import { DisclosureCard } from './disclosure-card';
+import { useAppPreferences } from '../contexts/app-preferences-context';
 
 export function ProfileEntryChoices() {
   const router = useRouter();
+  const { language } = useAppPreferences();
+  const en = language === 'en';
 
   return (
-    <DisclosureCard title="ابدئي ملفك المهني" subtitle="اختاري طريقة إدخال بياناتك" summary="أسئلة قصيرة أو رفع سيرة PDF اختياري" status="خطوة أولى" statusTone="success" defaultExpanded>
+    <DisclosureCard title={en ? 'Start your professional profile' : 'ابدئي ملفك المهني'} subtitle={en ? 'Choose how to add your information' : 'اختاري طريقة إدخال بياناتك'} summary={en ? 'Quick questions or optional PDF upload' : 'أسئلة قصيرة أو رفع سيرة PDF اختياري'} status={en ? 'First step' : 'خطوة أولى'} statusTone="success" defaultExpanded>
       <View style={styles.intro}>
-        <Text style={ui.text}>
-          لا تحتاج إلى خبرة عمل لتبدأ. اختر الطريقة الأنسب لك، ويمكنك إضافة سيرة ذاتية لاحقًا.
+        <Text style={[ui.text, en && styles.ltr]}>
+          {en ? 'You do not need work experience to get started. Choose the option that suits you; you can add a CV later.' : 'لا تحتاج إلى خبرة عمل لتبدأ. اختر الطريقة الأنسب لك، ويمكنك إضافة سيرة ذاتية لاحقًا.'}
         </Text>
       </View>
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="رفع سيرة ذاتية بصيغة PDF باللغة الإنجليزية"
-        accessibilityHint="يفتح صفحة رفع السيرة الذاتية"
+        accessibilityLabel={en ? 'Upload an English-language PDF CV' : 'رفع سيرة ذاتية بصيغة PDF باللغة الإنجليزية'}
+        accessibilityHint={en ? 'Opens the CV upload page' : 'يفتح صفحة رفع السيرة الذاتية'}
         onPress={() => router.push('/upload-cv')}
         style={({ pressed }) => [styles.choice, styles.primaryChoice, pressed && ui.pressed]}
       >
@@ -26,19 +29,19 @@ export function ProfileEntryChoices() {
           <View style={styles.iconFrame}>
             <MasarakIcon name="upload" size={22} />
           </View>
-          <Text style={styles.step}>١</Text>
+        <Text style={styles.step}>{en ? '1' : '١'}</Text>
         </View>
-        <Text style={styles.choiceTitle}>لديّ سيرة ذاتية</Text>
-        <Text style={styles.choiceDescription}>
-          ارفع ملف PDF باللغة الإنجليزية للبدء من معلوماتك الحالية.
+        <Text style={[styles.choiceTitle, en && styles.ltr]}>{en ? 'I have a CV' : 'لديّ سيرة ذاتية'}</Text>
+        <Text style={[styles.choiceDescription, en && styles.ltr]}>
+          {en ? 'Upload an English-language PDF to start with the information you already have.' : 'ارفع ملف PDF باللغة الإنجليزية للبدء من معلوماتك الحالية.'}
         </Text>
-        <Text style={styles.action}>رفع ملف PDF</Text>
+        <Text style={[styles.action, en && styles.ltr]}>{en ? 'Upload PDF' : 'رفع ملف PDF'}</Text>
       </Pressable>
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="إنشاء ملف مهني من خلال إجابات قصيرة"
-        accessibilityHint="يفتح صفحة إنشاء ملف مهني جديد"
+        accessibilityLabel={en ? 'Create a professional profile with quick answers' : 'إنشاء ملف مهني من خلال إجابات قصيرة'}
+        accessibilityHint={en ? 'Opens the profile setup page' : 'يفتح صفحة إنشاء ملف مهني جديد'}
         onPress={() => router.push('/create-profile')}
         style={({ pressed }) => [styles.choice, pressed && ui.pressed]}
       >
@@ -46,23 +49,23 @@ export function ProfileEntryChoices() {
           <View style={styles.iconFrame}>
             <MasarakIcon name="profile" size={22} />
           </View>
-          <Text style={styles.step}>٢</Text>
+        <Text style={styles.step}>{en ? '2' : '٢'}</Text>
         </View>
-        <Text style={styles.choiceTitle}>سأبدأ من الصفر</Text>
-        <Text style={styles.choiceDescription}>
-          أجب عن أسئلة قصيرة لتكوين ملفك، حتى لو لم تعمل من قبل.
+        <Text style={[styles.choiceTitle, en && styles.ltr]}>{en ? 'I will start from scratch' : 'سأبدأ من الصفر'}</Text>
+        <Text style={[styles.choiceDescription, en && styles.ltr]}>
+          {en ? 'Answer a few short questions to build your profile, even if you have not worked before.' : 'أجب عن أسئلة قصيرة لتكوين ملفك، حتى لو لم تعمل من قبل.'}
         </Text>
-        <Text style={styles.action}>إنشاء ملفي بالإجابات</Text>
+        <Text style={[styles.action, en && styles.ltr]}>{en ? 'Build my profile' : 'إنشاء ملفي بالإجابات'}</Text>
       </Pressable>
 
-      <Text style={styles.optionalNote}>
-        رفع السيرة الذاتية اختياري؛ يمكنك بناء ملفك دونها.
+      <Text style={[styles.optionalNote, en && styles.ltr]}>
+        {en ? 'Uploading a CV is optional. You can build your profile without one.' : 'رفع السيرة الذاتية اختياري؛ يمكنك بناء ملفك دونها.'}
       </Text>
     </DisclosureCard>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createAdaptiveStyles(() => ({
   intro: {
     alignItems: 'flex-end',
     gap: 10,
@@ -136,4 +139,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingTop: 2,
   },
-});
+  ltr: { textAlign: 'left' as const, writingDirection: 'ltr' as const },
+}));

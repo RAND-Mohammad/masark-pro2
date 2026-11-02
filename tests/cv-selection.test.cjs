@@ -16,9 +16,18 @@ for (const platform of ['web', 'android', 'ios']) {
       ...invalidAssets,
       { name: 'valid.pdf', uri: 'test://good', mimeType: 'application/pdf', file: new Blob([bytes['test://good']], { type: 'application/pdf' }) },
     ];
-    const h = harness('src/app/upload-cv.tsx', { platform, moduleOverrides: {
+    const h = harness('src/app/upload-cv.tsx', { platform, renderComponents: true, moduleOverrides: {
       'expo-document-picker': { getDocumentAsync: async options => { calls.pick.push(options); return { canceled: false, assets: [assets.shift()] }; } },
-      'expo-file-system': { File: class extends Blob { constructor(uri) { super([bytes[uri]], { type: 'application/pdf' }); } } },
+      'expo-file-system': {
+        FileMode: { ReadOnly: 0 },
+        File: class extends Blob {
+          constructor(uri) { super([bytes[uri]], { type: 'application/pdf' }); }
+          open(mode) {
+            if (mode !== 0) throw new Error('Unexpected file mode');
+            return { readBytes: async size => new Uint8Array(await this.slice(0, size).arrayBuffer()), close() {} };
+          }
+        },
+      },
       '../utils/cv-api': { analyzeCv: async () => { calls.analyze++; throw new Error('Must not analyze on file selection'); } },
       '../utils/skill-profile': { readSkillProfile: async () => null },
       '../utils/saved-cv': { loadSavedCv: async () => null, storeCvFile: async asset => { calls.stored.push(asset); return { asset }; } },

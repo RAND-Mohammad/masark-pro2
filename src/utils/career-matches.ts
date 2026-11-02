@@ -12,7 +12,7 @@ export const careerTitles: Record<string, string> = {
   C08: 'مهندس سحابة وDevOps',
   C09: 'محلل نظم أعمال',
 };
-for (const path of jobPaths) careerTitles[path.id] = path.title;
+for (const path of jobPaths) careerTitles[path.id] = careerTitles[path.baseCareerId] ?? path.title;
 export function getCareerMatches(ids: string[] | null) {
   return jobPaths.map(path => {
     const report = calculateCareerScore(path.id, ids);
