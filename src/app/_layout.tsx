@@ -39,9 +39,9 @@ function AppScreens() {
   }, [auth.ready, accessToken, auth.callbackBusy, auth.recoveryPending, pathname, adminRouteCheck, en]);
   useEffect(() => {
     if (!auth.ready || !accessToken || auth.callbackBusy || auth.recoveryPending || pathname === '/account' || pathname === '/reset-password' || adminRouteCheck?.token !== accessToken) return;
-    const accountManagementRoute = ['/profile', '/edit-profile', '/settings', '/privacy', '/delete-account'].includes(pathname);
-    if (adminRouteCheck.status === 'admin' && !pathname.startsWith('/admin') && !accountManagementRoute) router.replace('/admin' as never);
-    else if (adminRouteCheck.status === 'regular' && pathname.startsWith('/admin')) router.replace('/home');
+    // Admin accounts open the console when they sign in from /account. Keep
+    // their session free to use the regular app after choosing “Return to app”.
+    if (adminRouteCheck.status === 'regular' && pathname.startsWith('/admin')) router.replace('/home');
   }, [auth.ready, accessToken, auth.callbackBusy, auth.recoveryPending, pathname, adminRouteCheck, router]);
   if (!auth.ready) return <SafeAreaView style={[ui.screen, { alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }]}>
     {auth.error ? <><Text style={ui.text}>{auth.error}</Text><Pressable accessibilityRole="button" onPress={auth.reload} style={ui.button}><Text style={ui.buttonText}>إعادة المحاولة</Text></Pressable></> : <><ActivityIndicator color={colors.primary} /><Text style={ui.text}>جارٍ فتح مسارك…</Text></>}
