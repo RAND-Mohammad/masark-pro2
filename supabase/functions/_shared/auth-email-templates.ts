@@ -28,13 +28,19 @@ function code(value: unknown): string {
   return value;
 }
 
-function message(recipient: unknown, subject: string, instruction: string, content: string, link = false): AuthEmail {
+function message(recipient: unknown, subject: string, instruction: string, content: string, link = false, recoveryCode?: string): AuthEmail {
   const safe = escapeHtml(content);
+  const recoveryFallback = recoveryCode
+    ? `\n\nإذا لم يفتح الرابط، افتح تطبيق مسارك، اختر «نسيت كلمة المرور؟» ثم «إدخال رمز الاستعادة»، وأدخل الرمز التالي: ${recoveryCode}`
+    : '';
+  const recoveryFallbackHtml = recoveryCode
+    ? `<p>إذا لم يفتح الرابط، افتح تطبيق مسارك، اختر «نسيت كلمة المرور؟» ثم «إدخال رمز الاستعادة»، وأدخل الرمز التالي:</p><p dir="ltr" style="font-size:28px;font-weight:bold;letter-spacing:5px">${escapeHtml(recoveryCode)}</p>`
+    : '';
   return {
     to: [{ email: address(recipient) }],
     subject,
-    textContent: `${instruction}\n${content}\nلا تشارك الرمز أو الرابط مع أحد. إذا لم تطلب هذه العملية، تجاهل الرسالة.`,
-    htmlContent: `<div dir="rtl" style="font-family:Arial,sans-serif;padding:24px;color:#193c3b"><h2>مسارك</h2><p>${instruction}</p>${link ? `<p><a href="${safe}">${subject}</a></p>` : `<p dir="ltr" style="font-size:32px;font-weight:bold;letter-spacing:5px">${safe}</p>`}<p>لا تشارك الرمز أو الرابط مع أحد. إذا لم تطلب هذه العملية، تجاهل الرسالة.</p></div>`,
+    textContent: `${instruction}\n${content}${recoveryFallback}\nلا تشارك الرمز أو الرابط مع أحد. إذا لم تطلب هذه العملية، تجاهل الرسالة.`,
+    htmlContent: `<div dir="rtl" style="font-family:Arial,sans-serif;padding:24px;color:#193c3b"><h2>مسارك</h2><p>${instruction}</p>${link ? `<p><a href="${safe}">${subject}</a></p>${recoveryFallbackHtml}` : `<p dir="ltr" style="font-size:32px;font-weight:bold;letter-spacing:5px">${safe}</p>`}<p>لا تشارك الرمز أو الرابط مع أحد. إذا لم تطلب هذه العملية، تجاهل الرسالة.</p></div>`,
   };
 }
 
@@ -69,7 +75,8 @@ export function buildAuthEmails(payload: unknown, { supabaseUrl, redirectUrls }:
   };
   if (Object.hasOwn(links, action)) {
     const [subject, instruction] = links[action];
-    return [message(user.email, subject, instruction, verificationLink(data.token_hash, action), true)];
+    const recoveryCode = action === 'recovery' && typeof data.token === 'string' && /^[0-9]{6}$/.test(data.token) ? data.token : undefined;
+    return [message(user.email, subject, instruction, verificationLink(data.token_hash, action), true, recoveryCode)];
   }
   if (action === 'email_change') {
     const subject = 'تأكيد تغيير البريد في مسارك';
