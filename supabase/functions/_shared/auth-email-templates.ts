@@ -28,19 +28,16 @@ function code(value: unknown): string {
   return value;
 }
 
-function message(recipient: unknown, subject: string, instruction: string, content: string, link = false, recoveryCode?: string): AuthEmail {
+function message(recipient: unknown, subject: string, instruction: string, content: string, link = false): AuthEmail {
   const safe = escapeHtml(content);
-  const recoveryFallback = recoveryCode
-    ? `\n\nإذا لم يفتح الرابط، افتح تطبيق مسارك، اختر «نسيت كلمة المرور؟» ثم «إدخال رمز الاستعادة»، وأدخل الرمز التالي: ${recoveryCode}`
-    : '';
-  const recoveryFallbackHtml = recoveryCode
-    ? `<p>إذا لم يفتح الرابط، افتح تطبيق مسارك، اختر «نسيت كلمة المرور؟» ثم «إدخال رمز الاستعادة»، وأدخل الرمز التالي:</p><p dir="ltr" style="font-size:28px;font-weight:bold;letter-spacing:5px">${escapeHtml(recoveryCode)}</p>`
-    : '';
+  const safetyNote = link
+    ? 'لا تشارك الرمز أو الرابط مع أحد. إذا لم تطلب هذه العملية، تجاهل الرسالة.'
+    : 'لا تشارك الرمز مع أحد. إذا لم تطلب هذه العملية، تجاهل الرسالة.';
   return {
     to: [{ email: address(recipient) }],
     subject,
-    textContent: `${instruction}\n${content}${recoveryFallback}\nلا تشارك الرمز أو الرابط مع أحد. إذا لم تطلب هذه العملية، تجاهل الرسالة.`,
-    htmlContent: `<div dir="rtl" style="font-family:Arial,sans-serif;padding:24px;color:#193c3b"><h2>مسارك</h2><p>${instruction}</p>${link ? `<p><a href="${safe}">${subject}</a></p>${recoveryFallbackHtml}` : `<p dir="ltr" style="font-size:32px;font-weight:bold;letter-spacing:5px">${safe}</p>`}<p>لا تشارك الرمز أو الرابط مع أحد. إذا لم تطلب هذه العملية، تجاهل الرسالة.</p></div>`,
+    textContent: `${instruction}\n${content}\n${safetyNote}`,
+    htmlContent: `<div dir="rtl" style="font-family:Arial,sans-serif;padding:24px;color:#193c3b"><h2>مسارك</h2><p>${instruction}</p>${link ? `<p><a href="${safe}">${subject}</a></p>` : `<p dir="ltr" style="font-size:32px;font-weight:bold;letter-spacing:5px">${safe}</p>`}<p>${safetyNote}</p></div>`,
   };
 }
 
@@ -68,15 +65,16 @@ export function buildAuthEmails(payload: unknown, { supabaseUrl, redirectUrls }:
   if (action === 'reauthentication') {
     return [message(user.email, 'رمز التحقق لحساب مسارك', 'أدخل رمز التحقق التالي لإكمال العملية التي طلبتها:', code(data.token))];
   }
+  if (action === 'recovery') {
+    return [message(user.email, 'استعادة كلمة مرور مسارك', 'أدخل الرمز التالي في تطبيق مسارك لاختيار كلمة مرور جديدة:', code(data.token))];
+  }
   const links: Record<string, [string, string]> = {
-    recovery: ['استعادة كلمة مرور مسارك', 'استخدم الرابط التالي لاختيار كلمة مرور جديدة:'],
     magiclink: ['الدخول إلى مسارك', 'استخدم الرابط التالي لإكمال تسجيل الدخول الذي طلبته:'],
     invite: ['دعوة إلى مسارك', 'استخدم الرابط التالي لقبول الدعوة:'],
   };
   if (Object.hasOwn(links, action)) {
     const [subject, instruction] = links[action];
-    const recoveryCode = action === 'recovery' && typeof data.token === 'string' && /^[0-9]{6}$/.test(data.token) ? data.token : undefined;
-    return [message(user.email, subject, instruction, verificationLink(data.token_hash, action), true, recoveryCode)];
+    return [message(user.email, subject, instruction, verificationLink(data.token_hash, action), true)];
   }
   if (action === 'email_change') {
     const subject = 'تأكيد تغيير البريد في مسارك';

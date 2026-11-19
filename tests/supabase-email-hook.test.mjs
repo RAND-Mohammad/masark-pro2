@@ -123,19 +123,17 @@ test('Invalid recipients, non-six-digit codes and unsupported actions do not sen
   assert.equal(calls.length, 0);
 });
 
-test('Password recovery retains its trusted Supabase link and exact callback', async () => {
+test('Password recovery sends the code without using a redirect URL', async () => {
   const { handler, calls } = setup();
-  const recovery = { ...signup(), email_data: { email_action_type: 'recovery', token_hash: 'a'.repeat(32), redirect_to: REDIRECT, site_url: 'https://attacker.example.test' } };
+  const recovery = { ...signup(), email_data: { email_action_type: 'recovery', token: '654321', token_hash: 'a'.repeat(32), redirect_to: REDIRECT, site_url: 'https://attacker.example.test' } };
   assert.equal((await handler(signedRequest(recovery))).status, 200);
-  const link = new URL(calls[0].payload.textContent.split('\n')[1]);
-  assert.equal(link.origin, ENV.SUPABASE_URL);
-  assert.equal(link.pathname, '/auth/v1/verify');
-  assert.equal(link.searchParams.get('type'), 'recovery');
-  assert.equal(link.searchParams.get('redirect_to'), REDIRECT);
+  assert.match(calls[0].payload.textContent, /654321/);
+  assert.doesNotMatch(calls[0].payload.textContent, /auth\/v1\/verify|redirect_to/);
+  assert.doesNotMatch(calls[0].payload.htmlContent, /href=/);
   const rejected = structuredClone(recovery);
   rejected.email_data.redirect_to = 'https://attacker.example.test/auth-callback';
-  assert.equal((await handler(signedRequest(rejected))).status, 400);
-  assert.equal(calls.length, 1);
+  assert.equal((await handler(signedRequest(rejected))).status, 200);
+  assert.equal(calls.length, 2);
 });
 
 test('Native callbacks, invitations, magic links and reauthentication remain supported', async () => {

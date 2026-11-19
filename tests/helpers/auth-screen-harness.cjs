@@ -93,7 +93,6 @@ module.exports = function harness(file, { provider = false, session = null, getS
     '@react-native-async-storage/async-storage': { default: storageApi },
     '../utils/supabase': { authConfigured: true, supabase: { auth: api } },
     '../utils/scoped-storage': { setDataOwner: owner => owners.push(owner) },
-    '../utils/auth-redirect': { authRedirectUrl: () => 'https://app.example.test/auth-callback' },
     '../constants/design': { colors: {}, ui: {}, createAdaptiveStyles: factory => factory() },
     '../components/masarak-brand': { MasarakBrand: 'MasarakBrand' },
     '../components/masarak-icon': { MasarakIcon: 'MasarakIcon' },

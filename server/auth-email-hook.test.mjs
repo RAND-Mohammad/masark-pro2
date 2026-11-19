@@ -103,23 +103,24 @@ test('non-POST requests and oversized or non-JSON bodies are rejected', async t 
   assert.equal(h.sent.length, 0);
 });
 
-test('password recovery preserves a safe Supabase link, with exact allowed redirects', async t => {
+test('password recovery sends a six-digit code without a redirect link', async t => {
   const h = await harness(t);
   assert.equal((await h.post(JSON.stringify(fixture('recovery')))).status, 200);
-  const link = h.sent[0].body.textContent.split('\n')[1];
-  const url = new URL(link);
-  assert.equal(url.origin, env.EXPO_PUBLIC_SUPABASE_URL);
-  assert.equal(url.searchParams.get('type'), 'recovery');
-  assert.equal(url.searchParams.get('token'), 'a'.repeat(64));
-  assert.equal(url.searchParams.get('redirect_to'), redirect);
+  assert.match(h.sent[0].body.textContent, /012345/);
+  assert.doesNotMatch(h.sent[0].body.textContent, /auth\/v1\/verify|redirect_to/);
+  assert.doesNotMatch(h.sent[0].body.htmlContent, /href=/);
   const rejected = fixture('recovery');
   rejected.email_data.redirect_to = 'https://attacker.example/auth-callback';
-  assert.equal((await h.post(JSON.stringify(rejected))).status, 400);
-  assert.equal(h.sent.length, 1);
+  assert.equal((await h.post(JSON.stringify(rejected))).status, 200);
+  assert.equal(h.sent.length, 2);
 });
 
-test('native recovery callbacks, invitation links and reauthentication codes are handled', () => {
-  for (const action of ['recovery', 'magiclink', 'invite']) {
+test('password recovery stays code-only while invitation and magic links remain supported', () => {
+  const recovery = buildAuthEmails(fixture('recovery'), config)[0];
+  assert.match(recovery.textContent, /012345/);
+  assert.doesNotMatch(recovery.textContent, /auth\/v1\/verify|redirect_to/);
+  assert.doesNotMatch(recovery.htmlContent, /href=/);
+  for (const action of ['magiclink', 'invite']) {
     const payload = fixture(action);
     payload.email_data.redirect_to = 'masarak://auth-callback';
     const [email] = buildAuthEmails(payload, config);
