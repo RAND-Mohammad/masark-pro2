@@ -107,7 +107,7 @@ const styles = createAdaptiveStyles(() => ({
   content: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 10, gap: 12 },
   header: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 58 }, row: { flexDirection: 'row' },
   back: { width: 42, height: 42, borderRadius: 14, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  headerCopy: { flex: 1, gap: 2 }, eyebrow: { color: colors.gold, fontSize: 10, fontWeight: '800', letterSpacing: 1, textAlign: 'right' },
+  headerCopy: { flex: 1, gap: 2 }, eyebrow: { color: colors.gold, fontSize: 10, fontWeight: '800', textAlign: 'right' },
   clear: { paddingHorizontal: 3 }, ltr: { textAlign: 'left', writingDirection: 'ltr' },
   scopeNote: { backgroundColor: colors.mint, padding: 12, borderRadius: 12 },
   signInCard: { backgroundColor: colors.surface, padding: 19, borderRadius: 19, borderWidth: 1, borderColor: colors.border, gap: 13 },

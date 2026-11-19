@@ -306,7 +306,7 @@ const styles = createAdaptiveStyles(() => ({
     backButton: { minHeight: 44, flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
     topBarTitle: { color: colors.ink, fontSize: 17, fontWeight: '700' },
     topBarMore: { color: colors.muted, fontSize: 25, lineHeight: 28, letterSpacing: 2 },
-    eyebrow: { color: colors.primary, fontSize: 12, fontWeight: '800', letterSpacing: 0.6, textAlign: 'right', marginTop: 2 },
+    eyebrow: { color: colors.primary, fontSize: 12, fontWeight: '800', textAlign: 'right', marginTop: 2 },
     title: {
         color: colors.navy,
         fontSize: 34,
@@ -358,7 +358,7 @@ const styles = createAdaptiveStyles(() => ({
     scorePanel: { minHeight: 96, backgroundColor: colors.contrastPanel, borderRadius: 18, padding: 16, alignItems: 'center', justifyContent: 'center' },
     scoreMetric: { alignItems: 'center', gap: 4 },
     scoreNumber: { color: colors.contrastOnPanel, fontSize: 34, lineHeight: 40, fontWeight: '800', textAlign: 'center' },
-    scoreLabel: { color: colors.contrastOnPanel, opacity: 0.78, fontSize: 10, lineHeight: 15, fontWeight: '600', letterSpacing: 0.5, textAlign: 'center' },
+    scoreLabel: { color: colors.contrastOnPanel, opacity: 0.78, fontSize: 10, lineHeight: 15, fontWeight: '600', textAlign: 'center' },
     fitSection: { gap: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 17, paddingHorizontal: 16, paddingVertical: 12 },
     fitHeader: { minHeight: 44, flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
     infoButton: { padding: 2, opacity: 0.68 },

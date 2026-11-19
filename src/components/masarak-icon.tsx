@@ -28,7 +28,7 @@ const paths: Partial<Record<IconName, string>> = {
 };
 export function MasarakIcon({ name, size = 23, color = colors.primary }: { name: IconName; size?: number; color?: string }) {
   return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    {name === 'profile' ? <><Circle cx="12" cy="7" r="4" /><Path d="M4 21v-2a8 8 0 0 1 16 0v2" /></> : name === 'settings' ? <><Circle cx="12" cy="12" r="3" /><Path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.7-1l-1.7.7-1.4-2.4 1.4-1.1a8 8 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.7 1l1.7-.7 1.4 2.4-1.4 1.1a8 8 0 0 1 0 2Z" /></> : name === 'info' ? <><Circle cx="12" cy="12" r="9" /><Path d="M12 11v5 M12 8h.01" /></> : <Path d={paths[name]!} />}
+    {name === 'profile' ? <><Circle cx="12" cy="7" r="4" /><Path d="M4 21v-2a8 8 0 0 1 16 0v2" /></> : name === 'settings' ? <><Path d="M4 6h16 M4 12h16 M4 18h16" /><Circle cx="10" cy="6" r="2" fill={colors.background} /><Circle cx="15" cy="12" r="2" fill={colors.background} /><Circle cx="8" cy="18" r="2" fill={colors.background} /></> : name === 'info' ? <><Circle cx="12" cy="12" r="9" /><Path d="M12 11v5 M12 8h.01" /></> : <Path d={paths[name]!} />}
     {name === 'lock' && <Rect x="4" y="10" width="16" height="12" rx="2" />}
     {name === 'mail' && <Rect x="3" y="5" width="18" height="14" rx="2" />}
   </Svg>;

@@ -48,7 +48,7 @@ export const ui = createAdaptiveStyles(() => ({
   heading: { color: colors.ink, fontSize: 20, lineHeight: 30, fontWeight: '600', textAlign: 'right' as const },
   text: { color: colors.muted, fontSize: 15, lineHeight: 25, textAlign: 'right' as const },
   note: { color: colors.muted, fontSize: 12, lineHeight: 21, textAlign: 'right' as const },
-  eyebrow: { color: colors.primary, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textAlign: 'right' as const },
+  eyebrow: { color: colors.primary, fontSize: 11, fontWeight: '600', textAlign: 'right' as const },
   button: { backgroundColor: colors.primary, borderRadius: 15, minHeight: 52, padding: 16, alignItems: 'center' as const, justifyContent: 'center' as const },
   buttonText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600', textAlign: 'center' as const },
   outline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, borderRadius: 15, minHeight: 52, padding: 16, alignItems: 'center' as const, justifyContent: 'center' as const },

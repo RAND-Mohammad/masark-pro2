@@ -68,7 +68,7 @@ const styles = createAdaptiveStyles(() => ({
   closeButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   closeText: { color: colors.muted, fontSize: 30, lineHeight: 34, fontWeight: '300' },
   intro: { gap: 10, paddingTop: 7, paddingBottom: 1 },
-  eyebrow: { color: colors.primary, fontSize: 12, lineHeight: 18, fontWeight: '700', letterSpacing: 1.2, textAlign: 'right' },
+  eyebrow: { color: colors.primary, fontSize: 12, lineHeight: 18, fontWeight: '700', textAlign: 'right' },
   title: { color: colors.navy, fontSize: 34, lineHeight: 43, fontWeight: '800', textAlign: 'right' },
   description: { color: colors.muted, fontSize: 17, lineHeight: 27, textAlign: 'right' },
   stepCard: { backgroundColor: colors.surface, borderRadius: 24, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 19, paddingVertical: 20, gap: 12 },

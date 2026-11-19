@@ -313,7 +313,7 @@ const styles = createAdaptiveStyles(() => ({
   backText: { color: colors.primary, fontSize: 15, fontWeight: '700' },
   backArrow: { color: colors.primary, fontSize: 20 },
   hero: { paddingTop: 8, paddingBottom: 8, gap: 9 },
-  eyebrow: { color: colors.gold, textAlign: 'right', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
+  eyebrow: { color: colors.gold, textAlign: 'right', fontSize: 12, fontWeight: '800' },
   title: { color: colors.ink, fontSize: 29, fontWeight: '800', lineHeight: 40, textAlign: 'right' },
   intro: { color: colors.muted, fontSize: 16, lineHeight: 27, textAlign: 'right' },
   card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 18, borderRadius: 20, gap: 15, shadowColor: colors.ink, shadowOpacity: 0.045, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 1 },

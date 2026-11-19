@@ -101,7 +101,7 @@ const styles = createAdaptiveStyles(() => ({
   educationSummary: { color: colors.muted, fontSize: 11, textAlign: 'center' },
   direction: { backgroundColor: colors.contrastPanel, borderRadius: 20, padding: 18, gap: 13 },
   directionTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
-  directionLabel: { color: colors.contrastOnPanel, opacity: 0.78, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textAlign: 'right' },
+  directionLabel: { color: colors.contrastOnPanel, opacity: 0.78, fontSize: 11, fontWeight: '700', textAlign: 'right' },
   directionAction: { color: colors.contrastAccent, fontSize: 11, fontWeight: '700' },
   directionContent: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   directionLtr: { flexDirection: 'row' },
