@@ -22,18 +22,36 @@ export function normalizeJob(job) {
   if (!job || typeof job.job_id !== 'string' || !text(job.title) || job.currentness !== 'current' || job.stale === true) return null;
   if (!Array.isArray(job.locations) || !job.locations.some(location => value(location)?.country === 'SA')) return null;
   const postings = Array.isArray(job.postings) ? job.postings.filter(post => post.posting_status === 'listed') : [];
-  const source = postings.find(post => safeUrl(post.posting_url));
+  const usablePostings = postings.filter(post => {
+    const check = post.latest_application_check;
+    const isLever = text(post.source).toLowerCase().includes('lever');
+    if (isLever) {
+      const checkedAt = typeof check?.checked_at === 'string' ? Date.parse(check.checked_at) : NaN;
+      const recentlyVerified = Number.isFinite(checkedAt) && checkedAt <= Date.now() + 5 * 60 * 1000
+        && Date.now() - checkedAt <= 48 * 60 * 60 * 1000;
+      return check?.result === 'available' && recentlyVerified && safeUrl(post.posting_url);
+    }
+    return !['closed', 'broken'].includes(check?.result) && safeUrl(post.posting_url);
+  });
+  const source = usablePostings.find(post => post.latest_application_check?.result === 'available') ?? usablePostings[0];
   if (!source) return null;
   const attribution = source.attribution;
   // بعض المصادر تشترط نعرض اسمها ورابطها مع الإعلان.
   if (attribution?.required === true && (!text(attribution.text) || !safeUrl(attribution.link))) return null;
+  const postingUrl = safeUrl(source.posting_url);
+  const applicationUrl = safeUrl(source.application_url);
+  // Lever links are more reliable through the canonical posting page; its own
+  // Apply button routes candidates to the current application form.
+  const applyUrl = text(source.source).toLowerCase().includes('lever')
+    ? postingUrl || applicationUrl
+    : applicationUrl || postingUrl;
   return {
     id: job.job_id, title: text(job.title), employer: text(job.employer_name),
     description: text(job.description, 30000),
     locations: job.locations.filter(location => value(location)?.country === 'SA')
       .map(location => text(value(location)?.city) || text(value(location)?.region) || 'السعودية').slice(0, 10),
-    source: text(source.source), sourceUrl: safeUrl(source.posting_url),
-    applyUrl: safeUrl(source.application_url) || safeUrl(source.posting_url),
+    source: text(source.source), sourceUrl: postingUrl,
+    applyUrl,
     postedAt: iso(source.source_posted_at), lastCheckedAt: iso(source.last_completed_fetch_at),
     attribution: attribution?.required === true ? { text: text(attribution.text), url: safeUrl(attribution.link) } : null,
   };
@@ -60,7 +78,10 @@ export function createJobsService({ getKey = () => process.env.HEADCOUNT_API_KEY
       categoryActivity.get(category).lastAttemptAt = attemptedAt;
       const url = new URL('https://api.headcountlabs.com/v1/jobs');
       const since = new Date(now() - 30 * 86400000).toISOString().slice(0, 10);
-      for (const [name, input] of Object.entries({ country: 'SA', currentness: 'current', title_advanced: jobSearches[category], posted_since: since, limit: '25', sort: 'updated' })) url.searchParams.set(name, input);
+      for (const [name, input] of Object.entries({
+        country: 'SA', currentness: 'current', title_advanced: jobSearches[category],
+        posted_since: since, limit: '25', sort: 'updated',
+      })) url.searchParams.set(name, input);
       try {
         const response = await fetchImpl(url.href, {
           headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' },

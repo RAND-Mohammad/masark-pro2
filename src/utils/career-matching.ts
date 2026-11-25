@@ -73,6 +73,7 @@ export function getCareerMatches(input: CareerMatchInput) {
 
     return {
       career_id: career.id,
+      base_career_id: baseCareerId,
       title: career.title,
       description: career.description,
       score,

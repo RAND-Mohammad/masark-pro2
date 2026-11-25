@@ -12,7 +12,16 @@ export const careerTitles: Record<string, string> = {
   C08: 'مهندس سحابة وDevOps',
   C09: 'محلل نظم أعمال',
 };
-for (const path of jobPaths) careerTitles[path.id] = careerTitles[path.baseCareerId] ?? path.title;
+const specificCareerTitlesAr: Record<string, string> = {
+  'QA Engineer': 'مهندس ضمان الجودة',
+  'Software Test Engineer': 'مهندس اختبار البرمجيات',
+  'Computer Engineer': 'مهندس حاسب',
+  'Hardware Engineer': 'مهندس أجهزة الحاسب',
+  'Embedded Systems Engineer': 'مهندس أنظمة مدمجة',
+  'IoT Engineer': 'مهندس إنترنت الأشياء',
+  'Firmware Engineer': 'مهندس برمجيات ثابتة',
+};
+for (const path of jobPaths) careerTitles[path.id] = specificCareerTitlesAr[path.title] ?? careerTitles[path.baseCareerId] ?? path.title;
 export function getCareerMatches(ids: string[] | null) {
   return jobPaths.map(path => {
     const report = calculateCareerScore(path.id, ids);
